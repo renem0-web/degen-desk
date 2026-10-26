@@ -258,6 +258,8 @@ async function openEnv(text){
 }
 async function onMsg(text,via,retained){
   let e,o; try{[e,o]=await openEnv(text)}catch(x){S.err="decrypt/verify failed ("+via+")";return}
+  // short-lived Ably viewer token rides inside the encrypted ntfy snapshot; harvested before the replay check, never rendered
+  if(o&&o.relay){ const t=o.relay.ably; if(t&&typeof t.t==="string"&&(!S.ablyTok||t.exp>S.ablyTok.exp)){ S.ablyTok=t; setTimeout(ablyStep,0) } delete o.relay; }
   // replay / reorder protection: never apply data older than what is already shown
   if(S.data && o.gen < S.data.gen) return;
   const now=Date.now(); S.rx[via]=now; S.frames++;
@@ -307,22 +309,49 @@ function mqtt(){
 /* ---------------- Ably SSE (optional push relay; only if the fragment carries ak + ac) ----------------
    Subscribe-only key, EventSource (no SDK, no CDN). rewind=1 replays the last message on (re)connect: that first
    message is a cached copy, so it is flagged "retained" and judged by its envelope age, never as a live push. */
-function ably(){
-  if(!F.ak||!F.ac) return;
-  const host=(F.ah||"https://main.realtime.ably.net").replace(/\/$/,"");
-  let es,retry=2000;
-  const go=()=>{
-    if(S.paused) return; S.tx.ably="connecting"; let first=true;
-    try{ es=new EventSource(host+"/event-stream?v=1.2&rewind=1&channels="+encodeURIComponent(F.ac)+"&key="+encodeURIComponent(F.ak)); S.esA=es }
-    catch(x){ S.tx.ably="error"; return setTimeout(go,retry=Math.min(retry*2,30000)) }
-    es.onopen=()=>{S.tx.ably="connected";retry=2000;render()};
-    es.onmessage=ev=>{ try{ const m=JSON.parse(ev.data); if(typeof m.data==="string"){ onMsg(m.data,"ably",first); first=false } }catch(x){} };
-    es.onerror=()=>{ // EventSource retries by itself on network errors; on an Ably auth error it closes -> back off and reopen
-      S.tx.ably="reconnecting"; render();
-      if(es.readyState===2){ setTimeout(go,retry=Math.min(retry*2,30000)) } };
-  };
-  go();
+/*ABLY-BEGIN*/
+// Pure decision for the Ably link. cur = token the open connection uses (null if none), best = freshest token held,
+// err = Ably error code from the stream (0 if none). Token errors are 40140..40149 (Ably SSE docs).
+const ABLY_RENEW_MS=5*60000;
+function tokOk(now,t){ return !!t && typeof t.t==="string" && t.exp-now>60000 }
+function ablyDecide(now,cur,best,err){
+  const tokErr=err>=40140&&err<40150;
+  if(tokErr&&best&&cur&&best.t===cur.t) return {act:"fetch",why:"token rejected"};        // need a newer one first
+  if(!tokOk(now,best)) return {act:"fetch",why:best?"token expired":"no token yet"};
+  if(!cur||err||(best.t!==cur.t&&cur.exp-now<ABLY_RENEW_MS)) return {act:"connect",tok:best};
+  if(cur.exp-now<ABLY_RENEW_MS) return {act:"fetch",why:"renewing before expiry"};
+  return {act:"keep"};
 }
+/*ABLY-END*/
+/* ---------------- Ably SSE with short-lived token auth (no API key in the page, link or repo) ----------------
+   publisherd mints a ≤60-min, subscribe-only JWT for one channel and ships it inside the encrypted ntfy snapshot.
+   The page decrypts it, connects with accessToken=…, and swaps to a newer token before expiry. rewind=1 replays the
+   last message on connect: that first message is a cached copy → flagged "retained" and judged by its envelope age. */
+const AB={cur:null,es:null,err:0,fetching:0};
+function ablyClose(){ try{AB.es&&AB.es.close()}catch(x){} AB.es=null; AB.cur=null }
+async function ntfyLatest(){
+  if(!F.nb||!F.nt||Date.now()-AB.fetching<30000) return; AB.fetching=Date.now();
+  try{ const r=await fetch(F.nb.replace(/\/$/,"")+"/"+F.nt+"/json?poll=1&since=2h",{cache:"no-store"});
+       const m=(await r.text()).trim().split("\n").filter(Boolean).map(l=>JSON.parse(l)).filter(m=>m.event==="message");
+       if(m.length) await onMsg(m[m.length-1].message,"ntfy"); }catch(x){}
+}
+function ablyStep(){
+  if(S.paused||!S.ablyTok) return;           // Ably stays off until the box publishes a token (i.e. until it is enabled)
+  const now=Date.now(), d=ablyDecide(now,AB.cur,S.ablyTok,AB.err);
+  if(d.act==="fetch"){ if(AB.es&&!tokOk(now,AB.cur)) ablyClose(); if(!AB.es) S.tx.ably=d.why; ntfyLatest(); render(); return }
+  if(d.act!=="connect") return;
+  ablyClose(); AB.err=0; S.tx.ably="connecting"; let first=true;
+  const t=d.tok, ch=t.c, host=(t.h||"https://main.realtime.ably.net").replace(/\/$/,"");
+  let es; try{ es=new EventSource(host+"/event-stream?v=1.2&rewind=1&channels="+encodeURIComponent(ch)+"&accessToken="+encodeURIComponent(t.t)) }
+  catch(x){ S.tx.ably="error"; return }
+  AB.es=es; AB.cur=t; S.esA=es;
+  es.onopen=()=>{S.tx.ably="connected";render()};
+  es.onmessage=ev=>{ try{ const m=JSON.parse(ev.data); if(typeof m.data==="string"){ onMsg(m.data,"ably",first); first=false } }catch(x){} };
+  es.onerror=ev=>{ let code=0; try{ code=JSON.parse(ev.data).code||0 }catch(x){}
+    S.tx.ably="reconnecting"; render();
+    if(code||es.readyState===2){ AB.err=code||1; es.close(); if(AB.es===es){AB.es=null} setTimeout(ablyStep,code>=40140&&code<40150?0:5000) } };
+}
+function ably(){ setInterval(ablyStep,15000) }
 /* ---------------- ntfy (encrypted ~6-min snapshots; NOT live) ---------------- */
 async function ntfy(){
   if(!F.nb||!F.nt) return; const base=F.nb.replace(/\/$/,"")+"/"+F.nt;
@@ -580,7 +609,7 @@ function tHealth(d,fr){
   const lmax=Math.max(1,...lat.map(x=>x.decision_to_fill_ms||0));
   return `<div class="card"><div class="k">cockpit link</div><div class="v s ${fr.c==="live"?"good":fr.c==="disc"?"bad":"warn"}">${esc(fr.t)}</div>
    <table style="margin-top:8px"><tr><th>relay</th><th>state</th><th>last frame</th></tr>
-   ${F.ak?`<tr><td>Ably push (SSE, subscribe-only key)</td><td>${esc(S.tx.ably)}</td><td>${S.rx.ably?ago(now-S.rx.ably)+" ago":"—"}</td></tr>`:""}
+   ${S.ablyTok?`<tr><td>Ably push (SSE, ${esc(Math.max(0,Math.round((S.ablyTok.exp-now)/60000)))}-min subscribe-only token)</td><td>${esc(S.tx.ably)}</td><td>${S.rx.ably?ago(now-S.rx.ably)+" ago":"—"}</td></tr>`:""}
    <tr><td>MQTT push (shiftr public)</td><td>${esc(S.tx.mqtt)}</td><td>${S.rx.mqtt?ago(now-S.rx.mqtt)+" ago":"—"}</td></tr>
    <tr><td>ntfy snapshots (~6 min)</td><td>${esc(S.tx.ntfy)}</td><td>${S.rx.ntfy?ago(now-S.rx.ntfy)+" ago":"—"}</td></tr></table>
    <div class="note">Box publish delay (state → relay): ${S.boxDelay!=null?S.boxDelay+" ms":"—"} · frames decrypted: ${S.frames}${S.err?` · <span class="bad">${esc(S.err)}</span>`:""}. LIVE = an encrypted push frame within 15 s; frames are sent every ~5 s (full every 60 s). Public relays have no SLA.</div></div>
@@ -617,7 +646,7 @@ function hstrip(d,fr){
   const now=Date.now(),fd=d?.feed||{},c=(S.full||d||{}).coverage;
   const cell=(k,v,c2="")=>`<div class="hs"><div class="k">${k}</div><div class="v ${c2}">${v}</div></div>`;
   return cell("link",esc(fr.t),fr.c==="live"?"good":fr.c==="disc"?"bad":fr.c==="snap"?"":"warn")+
-   (F.ak?cell("ably push",esc(S.tx.ably)+(S.rx.ably?" · "+ago(now-S.rx.ably):""),S.tx.ably==="connected"?"":"warn"):"")+
+   (S.ablyTok?cell("ably push",esc(S.tx.ably)+(S.rx.ably?" · "+ago(now-S.rx.ably):""),S.tx.ably==="connected"?"":"warn"):"")+
    cell("mqtt push",esc(S.tx.mqtt)+(S.rx.mqtt?" · "+ago(now-S.rx.mqtt):""),S.tx.mqtt==="connected"||!F.mq?"":"warn")+
    cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
    cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
@@ -675,7 +704,7 @@ window.__tab=t=>{S.tab=t;document.querySelectorAll(".tab").forEach(x=>x.classLis
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));window.scrollTo(0,0);render()};
 $("#nav").innerHTML=TABS.map(([k,l,ic])=>`<button data-t="${k}" class="${k==="command"?"on":""}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join("");
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)__tab(b.dataset.t)};
-window.__pause=()=>{S.paused=true;try{S.es&&S.es.close()}catch(x){};S.tx.ntfy="closed";try{S.ws&&S.ws.close()}catch(x){};try{S.esA&&S.esA.close()}catch(x){};S.tx.ably=F.ak?"closed":"off"};
+window.__pause=()=>{S.paused=true;try{S.es&&S.es.close()}catch(x){};S.tx.ntfy="closed";try{S.ws&&S.ws.close()}catch(x){};ablyClose();S.tx.ably=S.ablyTok?"closed":"off"};
 window.__state=()=>({fresh:freshness(),tx:S.tx,frames:S.frames,hasFull:!!S.full,err:S.err,gen:S.data?.gen,layout:DESK.matches?(innerWidth>=1200?"desktop":"tablet"):"phone",src:S.src});
 DESK.addEventListener?.("change",()=>{ if(!DESK.matches&&S.drawer) closeSheet(); render() });
 (async()=>{
