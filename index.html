@@ -639,13 +639,13 @@ function tHistory(d){
    :`<div class="empty">Trade history arrives with the next full frame (every 60 s).</div>`}
   <h2>Decision log <small>${(f.activity||[]).length} newest</small></h2><div class="feed">${(f.activity||[]).slice(0,40).map(a=>card(a,m)).join("")}</div>`;
 }
-function tPerf(d){
+function tPerf(d,fr,noExp){
   const b=d.bank||{},r=d.risk||{},f=S.full||d,st=d.stats||{};
   const eq=(f.equity||[]), snapOnly=!S.full||S.full.compact;
   const closed=(f.trades||[]).filter(t=>t.closed).sort((a,b)=>a.closed-b.closed); let acc=0; const cum=closed.map(t=>[t.closed,(acc+=t.real)/L]);
   const pol=Object.entries(st);
   const at=d.recon?.attr, br=d.recon?.breach;
-  return `${expHTML(d)}${fixHTML(d)}<div class="card" style="margin-top:10px"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
+  return `${noExp?"":expHTML(d)}${fixHTML(d)}<div class="card" style="margin-top:10px"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
    <div class="v ${(b.stale_pos||[]).length?"stalev":""}" style="font-size:30px;margin-top:6px">${sol(b.eq_est??b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
    <div class="tmeta">start ${sol(b.start,2)} · cash ${sol(b.cash)} (exact) · positions are estimates, not a guaranteed floor${(b.stale_pos||[]).length?` · <span class="warn">stale: ${esc(b.stale_pos.join(", "))}</span>`:""}${(b.unpriced_pos||[]).length?` · <span class="bad">unpriced (counted as 0): ${esc(b.unpriced_pos.join(", "))}</span>`:""}</div>
    <div style="margin-top:10px">${snapOnly&&!eq.length?`<div class="empty" style="padding:16px">Equity history arrives with live full frames (every 60 s). Snapshots carry current numbers only.</div>`:spark(eq.map(p=>[p[0],p[1]/L]),{base:(b.start||0)/L,color:"#7cf7d4",fmt:v=>v.toFixed(3)})}</div></div>
@@ -717,7 +717,7 @@ function hstrip(d,fr){
    cell("mqtt push",esc(S.tx.mqtt)+(S.rx.mqtt?" · "+ago(now-S.rx.mqtt):""),S.tx.mqtt==="connected"||!F.mq?"":"warn")+
    cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
    cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
-   (d?.run?.kind==="experiment"?cell("run",esc(d.run.id.replace("exp-2sol-",""))+" · "+esc(d.run.status)+(d.run.status==="RUNNING"?" · "+hm(d.run.left_s)+" left":""),d.run.status==="RUNNING"?"good":"warn"):"")+
+   (d?.run?.kind==="experiment"?cell("experiment",esc(d.run.status)+(d.run.status==="RUNNING"?" · "+hm(d.run.left_s)+" left":""),d.run.status==="RUNNING"?"good":"warn"):"")+
    (d?cell("market feed",esc(fd.state||"—")+" · "+(fd.lag_ms??"—")+" ms",fd.state==="OK"?"good":"warn")+
    (d.mfeeds?.chain?cell("chain sockets",Object.values(d.mfeeds.chain.socks||{}).filter(v=>v.up).length+"/"+Object.keys(d.mfeeds.chain.socks||{}).length+" · "+(d.mfeeds.chain.rc10??"—")+" rc/10m",d.mfeeds.chain.up?"":"bad"):"")+
    (d.xp?.unable?.length?cell("exit pricing","UNABLE: "+esc(d.xp.unable.join(", ")),"bad"):d.ver?.engine_version?cell("engine",esc(d.ver.engine_version),"good"):"")+
@@ -736,7 +736,7 @@ function renderDesk(fr){
      for(const id of ["d-scan","d-pos","d-feed","d-perf"]) setPanel(id,`<div class="empty">Waiting for the first encrypted frame. Nothing is shown until real data arrives.</div>`); return }
   const e=d.engine||{},cs=e.cands||[],m=syms(Object.assign({},S.full||{},d)),acts=mergedActivity();
   $("#h-core").textContent=(e.funnel?.window||"");
-  setPanel("d-core",brainHTML(d,fr,true)+`<h2>Market feeds <small>engine data, not the cockpit link</small></h2><div class="card" style="padding:8px 10px">${feedsHTML(d)}</div>`);
+  setPanel("d-core",expHTML(d)+brainHTML(d,fr,true)+`<h2>Market feeds <small>engine data, not the cockpit link</small></h2><div class="card" style="padding:8px 10px">${feedsHTML(d)}</div>`);
   $("#h-scan").textContent=(e.rates?.active_candidates??"—")+" tracked";
   setPanel("d-scan",`<div class="card" style="padding:12px">${radar(e.funnel||{})}</div>
    <h2>Candidates under evaluation</h2>${candHTML(cs)}
@@ -749,7 +749,7 @@ function renderDesk(fr){
   $("#h-feed").textContent=acts.length+" newest · executable values";
   setPanel("d-feed",`<div class="feed">${acts.length?acts.map(a=>card(a,m)).join(""):`<div class="empty">No decisions yet. Idle means idle.</div>`}</div>`);
   $("#h-perf").textContent=(d.policy||"")+" · paper";
-  setPanel("d-perf",tPerf(d));
+  setPanel("d-perf",tPerf(d,fr,true));
   if(S.drawer) setPanel("sheetIn",drawerHTML(S.drawer,d,fr));
 }
 function drawerHTML(t,d,fr){
