@@ -244,6 +244,27 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const L=1e9, sol=(l,d=4)=>l==null?"—":(l/L).toFixed(d), ssol=(l,d=4)=>l==null?"—":((l>=0?"+":"")+(l/L).toFixed(d));
 const cls=v=>v==null?"mut":v>0?"good":v<0?"bad":"mut";
 const vbad=p=>p.val_status==="UNPRICED"?`<span class="chip c-rej">UNPRICED</span>`:p.stale?`<span class="chip c-stale">STALE ESTIMATE</span>`:"";
+const SRC={chain_feed:"chain feed",pumpswap_reserves:"RPC PumpSwap reserves",bonding_curve:"RPC bonding curve",jupiter:"Jupiter quote"};
+const engChip=p=>{const e=p.eng;if(p.manual_only)return `<span class="chip c-fill" title="manual-only moonbag: valued, never auto-exited">NOT MANAGED</span>`;if(!e)return"";
+  if(e.status==="UNABLE_TO_PRICE")return `<span class="chip c-rej" title="${esc([].concat(e.why||[]).join(" | "))}">UNABLE TO PRICE</span>`;
+  if(e.status==="PRICED_AWAITING_EXACT_QUOTE")return `<span class="chip c-stale">AWAITING EXACT QUOTE</span>`;return""};
+const engLine=p=>{const e=p.eng;if(p.manual_only)return `exit engine: not managed (manual-only moonbag)${p.rpc?` · RPC reserves value ${sol(p.rpc.val)} @ ${clock(p.rpc.ts)} CST`:""}`;
+  if(!e)return "exit engine: not yet evaluated";
+  if(e.status==="UNABLE_TO_PRICE")return `exit engine: UNABLE TO PRICE since ${clock(e.since||e.chk)} CST · no decision, no fill · retrying`;
+  return `exit engine priced ${e.val!=null?sol(e.val):"—"} from ${esc(SRC[e.src]||e.src||"—")} @ ${e.ts?clock(e.ts)+" CST":"—"} (checked ${e.chk?ago(Date.now()-e.chk)+" ago":"—"})${e.xdiv!=null?` · Jupiter vs RPC ${e.xdiv}%`:""}`};
+function feedsHTML(d){const f=d.mfeeds||{},ks=["chain","pumpportal","quotes"].filter(k=>f[k]);
+  if(!ks.length)return `<div class="empty" style="padding:12px">feed health arrives with the next frame</div>`;
+  const lab={chain:"chain feed",pumpportal:"PumpPortal",quotes:"quotes (RPC+Jupiter)"};
+  return `<table><tr><th>market feed</th><th>conn</th><th>reconn/10m</th><th>last msg</th><th>capture</th></tr>${ks.map(k=>{const x=f[k];
+   return `<tr title="${esc(x.name||"")}${x.err?" · last error: "+esc(x.err):""}"><td>${lab[k]}${x.socks&&Object.keys(x.socks).length>1?` <span class="dim">${Object.values(x.socks).filter(v=>v.up).length}/${Object.keys(x.socks).length} sockets</span>`:""}</td>
+   <td class="${x.up?"good":"bad"}">${x.up?"UP":"DOWN"}</td><td class="${(x.rc10||0)>20?"warn":""}">${x.rc10??"—"}${x.alldown10?` <span class="bad">(${x.alldown10} all-down)</span>`:""}</td>
+   <td class="${x.age>30?"warn":""}">${x.age!=null?x.age+"s":"—"}</td><td>${x.cap!=null?x.cap+"%":"—"}</td></tr>`}).join("")}</table>
+   <div class="note">Engine's market data, separate from this cockpit's own LIVE/SNAPSHOT link. Chain capture = live CreateEvents ÷ (live + backfill-recovered), 1 h. Quotes capture = successful requests ÷ all. ${f.pumpportal?.longest?`PumpPortal longest outage ${Math.round(f.pumpportal.longest)} s.`:""}</div>`}
+function fixHTML(d){const v=d.ver||{},r=d.since_fix;if(!v.engine_version)return"";
+  return `<div class="card"><div class="k">results since engine fix <span class="chip c-tp">${esc(v.engine_version)}</span> <span class="dim">policy ${esc(v.policy||"")} · rules unchanged</span></div>
+   ${r?`<div class="grid3" style="margin-top:8px"><div><div class="k">realized</div><div class="v s ${cls(r.real)}">${ssol(r.real)}</div></div><div><div class="k">equity Δ</div><div class="v s ${cls(r.eq_chg)}">${r.eq_chg==null?"pending":ssol(r.eq_chg)}</div></div><div><div class="k">fills b/s</div><div class="v s">${r.fills?.buy??0}/${r.fills?.sell??0}</div></div></div>
+   <div class="tmeta">since ${clock(r.since)} CST · commit ${esc(r.commit||"")} · ${r.fb_fills||0} fills priced by fallback quotes${(r.exits||[]).length?" · exits: "+r.exits.map(x=>esc(x.sym||"")+" "+esc((x.kind||"").replace(/_/g," "))+" "+ssol(x.pnl)+" ("+esc(SRC[x.src]||x.src||"")+")").join(", "):""}</div>`:""}
+   <div class="note">Results before ${clock(v.started_ms)} CST come from engine versions with known pricing bugs (frozen prices after missed migrations, unmanaged positions after restarts); they are flagged “pre-fix” in history.</div></div>`}
 const vline=p=>p.val_ms?`valued ${clock(p.val_ms)} CST (${ago((p.val_age||0)*1000)} ago) · ${esc(p.val_src||"")}`:`no valuation${p.rq_failed?" · re-quote failed":""}`;
 const ago=ms=>{if(ms==null)return"—";const s=Math.max(0,Math.round(ms/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m":Math.floor(s/3600)+"h"+String(Math.floor(s%3600/60)).padStart(2,"0")};
 const clock=t=>{const d=new Date(t);return d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZone:"America/Mexico_City"})};
@@ -481,6 +502,7 @@ function tCommand(d,fr){
   const e=d.engine||{},fn=e.funnel||{},m=syms(d);
   const ent=(d.activity||[]).slice(0,10);
   return `${brainHTML(d,fr,false)}
+  <h2>Market feeds <small>engine data, not the cockpit link</small></h2><div class="card" style="padding:8px 10px">${feedsHTML(d)}</div>
   <h2>Pipeline <small>${esc(fn.window||"")}</small></h2>
   <div class="card" style="padding:4px 6px">${pipeHTML(fn)}</div>
   <h2>Live decisions <small>newest first · executable values</small></h2>
@@ -489,7 +511,7 @@ function tCommand(d,fr){
 function posCard(p,isMoon){
   const mult=p.mult, c=mult==null?"mut":mult>=1?"good":"bad";
   return `<div class="pos" onclick="openPos('${esc(p.mint)}')"><div class="top"><span class="tsym">${esc(p.sym||short(p.mint))}</span>
-   ${p.tp1?`<span class="chip c-tp">TP1 ✓</span>`:""}${p.principal_back?`<span class="chip c-tp">principal back</span>`:""}${isMoon?`<span class="lock">🔒 MANUAL-ONLY</span>`:""}${isTest(p.mint)?`<span class="chip c-rej">TEST</span>`:""}${vbad(p)}
+   ${p.tp1?`<span class="chip c-tp">TP1 ✓</span>`:""}${p.principal_back?`<span class="chip c-tp">principal back</span>`:""}${isMoon?`<span class="lock">🔒 MANUAL-ONLY</span>`:""}${isTest(p.mint)?`<span class="chip c-rej">TEST</span>`:""}${vbad(p)}${engChip(p)}
    <span class="mult ${c} ${p.stale?"stalev":""}">${mult==null?"unpriced":(p.stale?"~":"")+mult.toFixed(2)+"x"}</span></div>
    <div class="grid3" style="margin-top:10px">
     <div><div class="k">${p.stale?"est. value (stale)":"est. value"}</div><div class="v s ${p.stale?"stalev":""}">${sol(p.exec)}</div></div>
@@ -497,6 +519,7 @@ function posCard(p,isMoon){
     <div><div class="k">realized · mint</div><div class="v s ${cls(p.real)}">${ssol(p.real)}</div></div></div>
    <div class="tmeta" style="margin-top:8px">${esc(p.venue||"—")} · held ${p.held_s!=null?ago(p.held_s*1000):"—"} · last trade seen ${p.last_trade_s!=null?ago(p.last_trade_s*1000)+" ago":"—"}${p.agent_exec!=null?" · agent "+sol(p.agent_exec):""}${p.moon_tok&&p.moon_exec!=null?" · moonbag "+sol(p.moon_exec):""}</div>
    <div class="tmeta ${p.stale?"warn":""}">${vline(p)}${p.stale&&p.unreal!=null?` · unrealized ${ssol(p.unreal)} is a stale estimate`:""}</div>
+   <div class="tmeta ${p.eng?.status==="UNABLE_TO_PRICE"?"bad":""}">${engLine(p)}</div>
    ${p.venue_chk?`<div class="tmeta warn">${esc(p.venue_chk)}</div>`:""}</div>`;
 }
 function tPositions(d){ return posSummary(d)+posLists(d) }
@@ -506,7 +529,7 @@ function posSummary(d){
    <div class="card"><div class="k">open</div><div class="v">${agent.length}</div></div>
    <div class="card"><div class="k">est. value</div><div class="v s">${sol(ps.reduce((a,p)=>a+(p.exec||0),0))}</div></div>
    <div class="card"><div class="k">unrealized${ps.some(p=>p.stale)?" (stale est.)":""}</div><div class="v s ${cls(unreal)}">${unreal==null?"partial":ssol(unreal)}</div></div></div>
-  <div class="note">Values are estimated <b>executable</b> sell quotes (after fees, slippage and price impact), not mid prices. Each position shows when it was last valued and from where; anything older than ${d.fresh?.stale_after_s??60} s is marked STALE ESTIMATE (its P&amp;L too). Market-feed status is separate. Tap a position for its lifecycle.</div>`;
+  <div class="note">Values are estimated <b>executable</b> sell quotes (after fees, slippage and price impact), not mid prices. Each position shows when it was last valued and from where; anything older than ${d.fresh?.stale_after_s??60} s is marked STALE ESTIMATE (its P&amp;L too). Market-feed status is separate. When the chain-feed price is older than ${d.xp?.max_age??60} s the exit engine re-prices from a fresh RPC-reserves or Jupiter quote for the exact quantity, or marks the position UNABLE TO PRICE (never fills from a frozen price). Tap a position for its lifecycle.</div>`;
 }
 function posLists(d){
   const ps=(d.positions||[]), moonM=new Set((d.moonbags||[]).map(x=>x.mint));
@@ -529,6 +552,7 @@ window.openPos=mint=>{ S.drawer=null;
    <span class="mult ${p.mult>=1?"good":"bad"}">${p.mult==null?"unpriced":p.mult.toFixed(2)+"x"}</span></div>
    <div class="tmeta" style="margin-top:4px">${esc(mint)}</div>
    <div class="tmeta ${p.stale?"warn":""}" style="margin-top:4px">${vbad(p)} held ${p.held_s!=null?ago(p.held_s*1000):"—"} · last trade seen ${p.last_trade_s!=null?ago(p.last_trade_s*1000)+" ago":"—"} · ${vline(p)}</div>
+   <div class="tmeta">${engChip(p)} ${engLine(p)}</div>
    ${p.venue_chk?`<div class="tmeta warn">${esc(p.venue_chk)}</div>`:""}
    <h2>Multiple timeline <small>exec ÷ remaining cost · 15 s samples since engine start · markers = fills</small></h2>
    <div class="card">${spark(ser,{base:1,markers,color:"#8b7bff",fmt:v=>v.toFixed(2)+"x"})}</div>
@@ -541,7 +565,7 @@ window.openPos=mint=>{ S.drawer=null;
     <div class="card"><div class="k">moonbag</div><div class="v s moon">${sol(p.moon_exec)}${p.moon_tok?' 🔒':''}</div></div></div>
    <h2>Lifecycle</h2>
    ${evs.length?evs.map(e=>`<div class="ev"><span class="dot" style="background:${dcol(e)}"></span><div><b>${esc((e.kind||e.side).replace(/_/g," "))}</b>
-     <div class="why">${esc(e.why||e.reason||"")}</div><div class="tmeta">${e.impact!=null?"impact "+e.impact+"% · ":""}${e.lat!=null?"fill latency "+e.lat+"ms":""}</div></div>
+     <div class="why">${esc(e.why||e.reason||"")}</div><div class="tmeta">${e.src?"priced by "+esc(SRC[e.src]||e.src)+" · ":""}${e.impact!=null?"impact "+e.impact+"% · ":""}${e.lat!=null?"fill latency "+e.lat+"ms":""}</div></div>
      <div class="tr"><b>${e.sol!=null?(e.side==="buy"?"−":"+")+sol(e.sol):""}</b>${clock(e.ts)}${e.pnl!=null?`<br><span class="${cls(e.pnl)}">${ssol(e.pnl)}</span>`:""}</div></div>`).join("")
      :`<div class="empty">${S.full&&!S.full.compact?"No fill history for this mint in the latest full frame.":"Lifecycle loads with the next full frame (every 60 s); snapshots carry current values only."}</div>`}
    <div class="note">Network/priority cost estimate per tx is modelled (${sol(d.assume?.net_cost_est,5)} SOL); fees already sit inside executable values. ${fees?"":""}Paper only.</div>`;
@@ -584,7 +608,7 @@ function tHistory(d){
   const f=S.full||d, ts=(f.trades||[]), m=syms(f);
   return `<h2>Trades <small>${ts.length} most recent · executable fills</small></h2>
   ${ts.length?ts.map(t=>`<div class="pos" onclick="openPos('${esc(t.mint)}')"><div class="top"><span class="tsym">${esc(t.sym||short(t.mint))}</span>
-   <span class="chip c-fill">${esc(t.policy||"")}</span><span class="chip ${t.provider==="MOCK"?"c-ex":"c-ent"}">${esc(t.provider)}</span>${isTest(t.mint)?'<span class="chip c-rej">TEST · excl. from stats</span>':""}
+   <span class="chip c-fill">${esc(t.policy||"")}</span><span class="chip ${t.provider==="MOCK"?"c-ex":"c-ent"}">${esc(t.provider)}</span>${isTest(t.mint)?'<span class="chip c-rej">TEST · excl. from stats</span>':""}${t.pre_fix?`<span class="chip c-stale" title="${esc(t.eng||"pre-fix")}">PRE-FIX</span>`:""}
    ${t.mint&&(d.moonbags||[]).some(x=>x.mint===t.mint)?'<span class="lock">🔒 moonbag</span>':""}
    ${t.closed?`<span class="mult ${cls(t.real)}" style="font-size:15px">${ssol(t.real)}</span>`:'<span class="mult" style="font-size:13px;color:var(--mut)">open</span>'}</div>
    <div class="tmeta">${clock(t.opened)} → ${t.closed?clock(t.closed):"open"} · ${esc(t.status)} · in ${sol(t.inv)} · out ${sol(t.proc)} · ${(t.ev||[]).length} fills</div></div>`).join("")
@@ -597,7 +621,7 @@ function tPerf(d){
   const closed=(f.trades||[]).filter(t=>t.closed).sort((a,b)=>a.closed-b.closed); let acc=0; const cum=closed.map(t=>[t.closed,(acc+=t.real)/L]);
   const pol=Object.entries(st);
   const at=d.recon?.attr, br=d.recon?.breach;
-  return `<div class="card"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
+  return `${fixHTML(d)}<div class="card" style="margin-top:10px"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
    <div class="v ${(b.stale_pos||[]).length?"stalev":""}" style="font-size:30px;margin-top:6px">${sol(b.eq_est??b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
    <div class="tmeta">start ${sol(b.start,2)} · cash ${sol(b.cash)} (exact) · positions are estimates, not a guaranteed floor${(b.stale_pos||[]).length?` · <span class="warn">stale: ${esc(b.stale_pos.join(", "))}</span>`:""}${(b.unpriced_pos||[]).length?` · <span class="bad">unpriced (counted as 0): ${esc(b.unpriced_pos.join(", "))}</span>`:""}</div>
    <div style="margin-top:10px">${snapOnly&&!eq.length?`<div class="empty" style="padding:16px">Equity history arrives with live full frames (every 60 s). Snapshots carry current numbers only.</div>`:spark(eq.map(p=>[p[0],p[1]/L]),{base:(b.start||0)/L,color:"#7cf7d4",fmt:v=>v.toFixed(3)})}</div></div>
@@ -629,7 +653,8 @@ function tHealth(d,fr){
    <tr><td>MQTT push (shiftr public)</td><td>${esc(S.tx.mqtt)}</td><td>${S.rx.mqtt?ago(now-S.rx.mqtt)+" ago":"—"}</td></tr>
    <tr><td>ntfy snapshots (~6 min)</td><td>${esc(S.tx.ntfy)}</td><td>${S.rx.ntfy?ago(now-S.rx.ntfy)+" ago":"—"}</td></tr></table>
    <div class="note">Box publish delay (state → relay): ${S.boxDelay!=null?S.boxDelay+" ms":"—"} · frames decrypted: ${S.frames}${S.err?` · <span class="bad">${esc(S.err)}</span>`:""}. LIVE = an encrypted push frame within 15 s; frames are sent every ~5 s (full every 60 s). Public relays have no SLA.</div></div>
-  <h2>Market feed <small>connection only · position price freshness is shown per position</small></h2><div class="grid3">
+  <h2>Market feeds <small>engine data · separate from the cockpit link above</small></h2><div class="card">${feedsHTML(d)}</div>
+  <h2>Engine event stream <small>position price freshness is shown per position</small></h2><div class="grid3">
    <div class="card"><div class="k">feed</div><div class="v s ${fd.state==="OK"?"good":"warn"}">${esc(fd.state||"—")}</div></div>
    <div class="card"><div class="k">lag</div><div class="v s">${fd.lag_ms??"—"} ms</div></div>
    <div class="card"><div class="k">events/s</div><div class="v s">${fd.eps??"—"}</div></div></div>
@@ -669,6 +694,8 @@ function hstrip(d,fr){
    cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
    cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
    (d?cell("market feed",esc(fd.state||"—")+" · "+(fd.lag_ms??"—")+" ms",fd.state==="OK"?"good":"warn")+
+   (d.mfeeds?.chain?cell("chain sockets",Object.values(d.mfeeds.chain.socks||{}).filter(v=>v.up).length+"/"+Object.keys(d.mfeeds.chain.socks||{}).length+" · "+(d.mfeeds.chain.rc10??"—")+" rc/10m",d.mfeeds.chain.up?"":"bad"):"")+
+   (d.xp?.unable?.length?cell("exit pricing","UNABLE: "+esc(d.xp.unable.join(", ")),"bad"):d.ver?.engine_version?cell("engine",esc(d.ver.engine_version),"good"):"")+
    cell("valuations",d.fresh?(d.fresh.stale||d.fresh.unpriced?`${d.fresh.stale} stale · ${d.fresh.unpriced} unpriced`:"all fresh"):"—",d.fresh&&(d.fresh.stale||d.fresh.unpriced)?"warn":"good")+
    cell("events/s",fd.eps??"—")+
    cell("coverage",c?c.union_pct+"%":"—")+
@@ -684,7 +711,7 @@ function renderDesk(fr){
      for(const id of ["d-scan","d-pos","d-feed","d-perf"]) setPanel(id,`<div class="empty">Waiting for the first encrypted frame. Nothing is shown until real data arrives.</div>`); return }
   const e=d.engine||{},cs=e.cands||[],m=syms(Object.assign({},S.full||{},d)),acts=mergedActivity();
   $("#h-core").textContent=(e.funnel?.window||"");
-  setPanel("d-core",brainHTML(d,fr,true));
+  setPanel("d-core",brainHTML(d,fr,true)+`<h2>Market feeds <small>engine data, not the cockpit link</small></h2><div class="card" style="padding:8px 10px">${feedsHTML(d)}</div>`);
   $("#h-scan").textContent=(e.rates?.active_candidates??"—")+" tracked";
   setPanel("d-scan",`<div class="card" style="padding:12px">${radar(e.funnel||{})}</div>
    <h2>Candidates under evaluation</h2>${candHTML(cs)}
