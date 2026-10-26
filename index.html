@@ -94,6 +94,8 @@ h2 small{font-family:var(--mono);letter-spacing:0;text-transform:none;color:var(
 .tc.old{animation:none}
 @keyframes slide{from{opacity:0;transform:translateX(-6px)}to{opacity:1}}
 .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:3px 6px;border-radius:6px;border:1px solid;white-space:nowrap}
+.c-stale{color:var(--warn);border-color:rgba(255,204,102,.45);background:rgba(255,204,102,.08)}
+.stalev{opacity:.62;font-style:italic}
 .c-rej{color:var(--bad);border-color:rgba(255,107,139,.35);background:rgba(255,107,139,.06)}
 .c-ent{color:var(--ac);border-color:rgba(124,247,212,.35);background:rgba(124,247,212,.06)}
 .c-tp{color:var(--good);border-color:rgba(92,242,160,.35);background:rgba(92,242,160,.06)}
@@ -241,6 +243,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const L=1e9, sol=(l,d=4)=>l==null?"—":(l/L).toFixed(d), ssol=(l,d=4)=>l==null?"—":((l>=0?"+":"")+(l/L).toFixed(d));
 const cls=v=>v==null?"mut":v>0?"good":v<0?"bad":"mut";
+const vbad=p=>p.val_status==="UNPRICED"?`<span class="chip c-rej">UNPRICED</span>`:p.stale?`<span class="chip c-stale">STALE ESTIMATE</span>`:"";
+const vline=p=>p.val_ms?`valued ${clock(p.val_ms)} CST (${ago((p.val_age||0)*1000)} ago) · ${esc(p.val_src||"")}`:`no valuation${p.rq_failed?" · re-quote failed":""}`;
 const ago=ms=>{if(ms==null)return"—";const s=Math.max(0,Math.round(ms/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m":Math.floor(s/3600)+"h"+String(Math.floor(s%3600/60)).padStart(2,"0")};
 const clock=t=>{const d=new Date(t);return d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZone:"America/Mexico_City"})};
 const b64u=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"===".slice((s.length+3)%4)),c=>c.charCodeAt(0));
@@ -485,22 +489,24 @@ function tCommand(d,fr){
 function posCard(p,isMoon){
   const mult=p.mult, c=mult==null?"mut":mult>=1?"good":"bad";
   return `<div class="pos" onclick="openPos('${esc(p.mint)}')"><div class="top"><span class="tsym">${esc(p.sym||short(p.mint))}</span>
-   ${p.tp1?`<span class="chip c-tp">TP1 ✓</span>`:""}${p.principal_back?`<span class="chip c-tp">principal back</span>`:""}${isMoon?`<span class="lock">🔒 MANUAL-ONLY</span>`:""}${isTest(p.mint)?`<span class="chip c-rej">TEST</span>`:""}
-   <span class="mult ${c}">${mult==null?"unpriced":mult.toFixed(2)+"x"}</span></div>
+   ${p.tp1?`<span class="chip c-tp">TP1 ✓</span>`:""}${p.principal_back?`<span class="chip c-tp">principal back</span>`:""}${isMoon?`<span class="lock">🔒 MANUAL-ONLY</span>`:""}${isTest(p.mint)?`<span class="chip c-rej">TEST</span>`:""}${vbad(p)}
+   <span class="mult ${c} ${p.stale?"stalev":""}">${mult==null?"unpriced":(p.stale?"~":"")+mult.toFixed(2)+"x"}</span></div>
    <div class="grid3" style="margin-top:10px">
-    <div><div class="k">exec value</div><div class="v s">${sol(p.exec)}</div></div>
+    <div><div class="k">${p.stale?"est. value (stale)":"est. value"}</div><div class="v s ${p.stale?"stalev":""}">${sol(p.exec)}</div></div>
     <div><div class="k">cost left</div><div class="v s">${sol(p.cost)}</div></div>
     <div><div class="k">realized · mint</div><div class="v s ${cls(p.real)}">${ssol(p.real)}</div></div></div>
-   <div class="tmeta" style="margin-top:8px">${esc(p.venue||"—")} · held ${p.age_s!=null?ago(p.age_s*1000):"—"} · agent ${sol(p.agent_exec)} · moonbag ${sol(p.moon_exec)}</div></div>`;
+   <div class="tmeta" style="margin-top:8px">${esc(p.venue||"—")} · held ${p.held_s!=null?ago(p.held_s*1000):"—"} · last trade seen ${p.last_trade_s!=null?ago(p.last_trade_s*1000)+" ago":"—"}${p.agent_exec!=null?" · agent "+sol(p.agent_exec):""}${p.moon_tok&&p.moon_exec!=null?" · moonbag "+sol(p.moon_exec):""}</div>
+   <div class="tmeta ${p.stale?"warn":""}">${vline(p)}${p.stale&&p.unreal!=null?` · unrealized ${ssol(p.unreal)} is a stale estimate`:""}</div>
+   ${p.venue_chk?`<div class="tmeta warn">${esc(p.venue_chk)}</div>`:""}</div>`;
 }
 function tPositions(d){ return posSummary(d)+posLists(d) }
 function posSummary(d){
   const ps=(d.positions||[]), agent=ps.filter(p=>p.agent_tok>0), unreal=d.bank?.unreal;
   return `<div class="grid3">
    <div class="card"><div class="k">open</div><div class="v">${agent.length}</div></div>
-   <div class="card"><div class="k">exec value</div><div class="v s">${sol(agent.reduce((a,p)=>a+(p.agent_exec||0),0))}</div></div>
-   <div class="card"><div class="k">unrealized</div><div class="v s ${cls(unreal)}">${unreal==null?"partial":ssol(unreal)}</div></div></div>
-  <div class="note">Values are <b>executable</b> sell quotes (after fees, slippage and price impact), not mid prices. Tap a position for its lifecycle.</div>`;
+   <div class="card"><div class="k">est. value</div><div class="v s">${sol(ps.reduce((a,p)=>a+(p.exec||0),0))}</div></div>
+   <div class="card"><div class="k">unrealized${ps.some(p=>p.stale)?" (stale est.)":""}</div><div class="v s ${cls(unreal)}">${unreal==null?"partial":ssol(unreal)}</div></div></div>
+  <div class="note">Values are estimated <b>executable</b> sell quotes (after fees, slippage and price impact), not mid prices. Each position shows when it was last valued and from where; anything older than ${d.fresh?.stale_after_s??60} s is marked STALE ESTIMATE (its P&amp;L too). Market-feed status is separate. Tap a position for its lifecycle.</div>`;
 }
 function posLists(d){
   const ps=(d.positions||[]), moonM=new Set((d.moonbags||[]).map(x=>x.mint));
@@ -522,13 +528,15 @@ window.openPos=mint=>{ S.drawer=null;
    <span class="chip c-fill">${esc(t?.policy||d.policy)}</span><span class="chip c-ex">MOCK</span><span class="sp"></span>
    <span class="mult ${p.mult>=1?"good":"bad"}">${p.mult==null?"unpriced":p.mult.toFixed(2)+"x"}</span></div>
    <div class="tmeta" style="margin-top:4px">${esc(mint)}</div>
+   <div class="tmeta ${p.stale?"warn":""}" style="margin-top:4px">${vbad(p)} held ${p.held_s!=null?ago(p.held_s*1000):"—"} · last trade seen ${p.last_trade_s!=null?ago(p.last_trade_s*1000)+" ago":"—"} · ${vline(p)}</div>
+   ${p.venue_chk?`<div class="tmeta warn">${esc(p.venue_chk)}</div>`:""}
    <h2>Multiple timeline <small>exec ÷ remaining cost · 15 s samples since engine start · markers = fills</small></h2>
    <div class="card">${spark(ser,{base:1,markers,color:"#8b7bff",fmt:v=>v.toFixed(2)+"x"})}</div>
    <div class="grid2" style="margin-top:10px">
     <div class="card"><div class="k">invested</div><div class="v s">${sol(p.inv??t?.inv)}</div></div>
     <div class="card"><div class="k">proceeds</div><div class="v s">${sol(p.proc??t?.proc)}</div></div>
     <div class="card"><div class="k">realized</div><div class="v s ${cls(p.real)}">${ssol(p.real??t?.real)}</div></div>
-    <div class="card"><div class="k">remaining exposure</div><div class="v s">${sol(p.exec)}<span class="dim"> / cost ${sol(p.cost)}</span></div></div>
+    <div class="card"><div class="k">remaining exposure ${p.stale?"(stale est.)":"(est.)"}</div><div class="v s ${p.stale?"stalev":""}">${sol(p.exec)}<span class="dim"> / cost ${sol(p.cost)}</span></div></div>
     <div class="card"><div class="k">agent part</div><div class="v s">${sol(p.agent_exec)}</div></div>
     <div class="card"><div class="k">moonbag</div><div class="v s moon">${sol(p.moon_exec)}${p.moon_tok?' 🔒':''}</div></div></div>
    <h2>Lifecycle</h2>
@@ -588,9 +596,10 @@ function tPerf(d){
   const eq=(f.equity||[]), snapOnly=!S.full||S.full.compact;
   const closed=(f.trades||[]).filter(t=>t.closed).sort((a,b)=>a.closed-b.closed); let acc=0; const cum=closed.map(t=>[t.closed,(acc+=t.real)/L]);
   const pol=Object.entries(st);
-  return `<div class="card"><div class="k">conservative equity <span class="dim">(cash + executable exit values; unpriced = 0)</span></div>
-   <div class="v" style="font-size:30px;margin-top:6px">${sol(b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
-   <div class="tmeta">start ${sol(b.start,2)} · ${b.unpriced?b.unpriced+" position(s) unpriced → counted as 0":"all priced"} · full equity ${b.eq==null?"n/a":sol(b.eq)}</div>
+  const at=d.recon?.attr, br=d.recon?.breach;
+  return `<div class="card"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
+   <div class="v ${(b.stale_pos||[]).length?"stalev":""}" style="font-size:30px;margin-top:6px">${sol(b.eq_est??b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
+   <div class="tmeta">start ${sol(b.start,2)} · cash ${sol(b.cash)} (exact) · positions are estimates, not a guaranteed floor${(b.stale_pos||[]).length?` · <span class="warn">stale: ${esc(b.stale_pos.join(", "))}</span>`:""}${(b.unpriced_pos||[]).length?` · <span class="bad">unpriced (counted as 0): ${esc(b.unpriced_pos.join(", "))}</span>`:""}</div>
    <div style="margin-top:10px">${snapOnly&&!eq.length?`<div class="empty" style="padding:16px">Equity history arrives with live full frames (every 60 s). Snapshots carry current numbers only.</div>`:spark(eq.map(p=>[p[0],p[1]/L]),{base:(b.start||0)/L,color:"#7cf7d4",fmt:v=>v.toFixed(3)})}</div></div>
   <div class="grid2" style="margin-top:10px">
    <div class="card"><div class="k">cash</div><div class="v">${sol(b.cash)}</div></div>
@@ -602,6 +611,12 @@ function tPerf(d){
   <h2>Cumulative realized <small>closed trades in view</small></h2><div class="card">${spark(cum,{base:0,color:"#ffcc66",fmt:v=>v.toFixed(3)})}</div>
   <h2>By policy <small>reconciled ledger · excl. TEST</small></h2><div class="card"><table><tr><th>policy</th><th>trades</th><th>closed</th><th>W/L</th><th>realized</th></tr>
    ${pol.map(([k,v])=>`<tr><td>${esc(k)}${k===d.policy?' <span class="good">●</span>':""}</td><td>${v.trades}</td><td>${v.closed}</td><td>${v.wins}/${v.closed-v.wins}</td><td class="${cls(v.realized_lamports)}">${ssol(v.realized_lamports)}</td></tr>`).join("")}</table>
+   </div>
+  <h2>Realized by policy <small>all money incl. TEST · closed vs still-open partial sales · sums to headline</small></h2><div class="card">${at?`<table><tr><th>policy</th><th>closed</th><th>open partials</th><th>total</th></tr>
+   ${Object.entries(at.by).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="${cls(v.closed)}">${v.closed_n} · ${ssol(v.closed)}</td><td class="${cls(v.open)}">${v.open_n} · ${ssol(v.open)}</td><td class="${cls(v.total)}">${ssol(v.total)}</td></tr>`).join("")}
+   <tr><td><b>headline</b></td><td></td><td></td><td class="${cls(at.headline)}"><b>${ssol(at.headline)}</b></td></tr></table>
+   <div class="note">mock-v1 fills carry no policy tag; they are attributed from the ledger's policy-change annotations. Partial sales of a still-open position count toward the policy that opened it.</div>`:'<div class="empty">attribution arrives with the next reconciliation</div>'}
+   ${br?`<div class="note">Daily loss limit −${sol(br.limit,2)} SOL (derived from the ledger): ${Object.entries(br.days||{}).map(([k,v])=>`first breached ${clock(v.ts)} CST on ${esc(k)} UTC (seq ${v.seq}, ${ssol(v.real)} SOL, ${esc(v.sym||"")}, ${esc(v.policy||"")})`).join("; ")||"not breached"}.${br.flag_start?` mock-v3 flag recording started ${clock(br.flag_start.ts)} CST (seq ${br.flag_start.seq}).`:""}</div>`:""}
    <div class="note">Small samples. These are MOCK rule-based paper results with modelled latency (${d.assume?.latency_ms} ms) and slippage cap (${(d.assume?.slip_bps||0)/100}%); not evidence of a profitable strategy.</div></div>`;
 }
 function tHealth(d,fr){
@@ -614,7 +629,7 @@ function tHealth(d,fr){
    <tr><td>MQTT push (shiftr public)</td><td>${esc(S.tx.mqtt)}</td><td>${S.rx.mqtt?ago(now-S.rx.mqtt)+" ago":"—"}</td></tr>
    <tr><td>ntfy snapshots (~6 min)</td><td>${esc(S.tx.ntfy)}</td><td>${S.rx.ntfy?ago(now-S.rx.ntfy)+" ago":"—"}</td></tr></table>
    <div class="note">Box publish delay (state → relay): ${S.boxDelay!=null?S.boxDelay+" ms":"—"} · frames decrypted: ${S.frames}${S.err?` · <span class="bad">${esc(S.err)}</span>`:""}. LIVE = an encrypted push frame within 15 s; frames are sent every ~5 s (full every 60 s). Public relays have no SLA.</div></div>
-  <h2>Market feed</h2><div class="grid3">
+  <h2>Market feed <small>connection only · position price freshness is shown per position</small></h2><div class="grid3">
    <div class="card"><div class="k">feed</div><div class="v s ${fd.state==="OK"?"good":"warn"}">${esc(fd.state||"—")}</div></div>
    <div class="card"><div class="k">lag</div><div class="v s">${fd.lag_ms??"—"} ms</div></div>
    <div class="card"><div class="k">events/s</div><div class="v s">${fd.eps??"—"}</div></div></div>
@@ -628,7 +643,9 @@ function tHealth(d,fr){
    <tr><td>decision policy</td><td>${esc(d.policy)} · ${esc(d.prefilter)}</td></tr><tr><td>decider</td><td>${d.is_ai?"GROK AI":"MOCK rule-based"}</td></tr>
    <tr><td>trading status</td><td class="${d.status==="ACTIVE"?"good":"bad"}">${esc(d.status)}</td></tr>
    <tr><td>daily-loss stop</td><td>${r.gate?"GATE (blocks entries)":"OFF · flag only"}</td></tr>
-   <tr><td>breach days / entries while breached</td><td>${r.breach_days} / ${r.entries_breached}</td></tr>
+   <tr><td>first daily-loss breach (derived)</td><td>${Object.values(d.recon?.breach?.days||{}).map(v=>clock(v.ts)+" CST · "+esc(v.policy||"")).join(", ")||"—"}</td></tr>
+   <tr><td>mock-v3 flag recording since</td><td>${d.recon?.breach?.flag_start?clock(d.recon.breach.flag_start.ts)+" CST":"—"}</td></tr>
+   <tr><td>flagged breach days / entries while breached</td><td>${r.breach_days} / ${r.entries_breached}</td></tr>
    <tr><td>free cash / need per entry</td><td>${sol(r.free_cash)} / ${sol(r.need)}</td></tr>
    <tr><td>ledger reconciliation</td><td class="${d.recon?.ok?"good":"bad"}">${d.recon?.ok?"OK":"MISMATCH"} · ${d.recon?.entries} entries</td></tr>
    <tr><td>engine started</td><td>${clock(d.started)}</td></tr><tr><td>data generated</td><td>${clock(d.gen)} CST</td></tr></table>
@@ -652,6 +669,7 @@ function hstrip(d,fr){
    cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
    cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
    (d?cell("market feed",esc(fd.state||"—")+" · "+(fd.lag_ms??"—")+" ms",fd.state==="OK"?"good":"warn")+
+   cell("valuations",d.fresh?(d.fresh.stale||d.fresh.unpriced?`${d.fresh.stale} stale · ${d.fresh.unpriced} unpriced`:"all fresh"):"—",d.fresh&&(d.fresh.stale||d.fresh.unpriced)?"warn":"good")+
    cell("events/s",fd.eps??"—")+
    cell("coverage",c?c.union_pct+"%":"—")+
    cell("ledger",d.recon?.ok?"OK · "+d.recon.entries:"MISMATCH",d.recon?.ok?"good":"bad")+
