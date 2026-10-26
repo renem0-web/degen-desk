@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#06070b">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src wss: https:; base-uri 'none'; form-action 'none'">
+<title>DEGEN DESK · Command</title>
+<style>
+:root{
+  --bg:#06070b;--bg2:#0b0d14;--card:#0f121b;--card2:#131724;--line:#1d2232;--line2:#272e44;
+  --tx:#e9ecf5;--mut:#8a93ab;--dim:#5a6279;
+  --ac:#7cf7d4;--ac2:#8b7bff;--warn:#ffcc66;--bad:#ff6b8b;--good:#5cf2a0;--moon:#c9a7ff;
+  --sans:"Space Grotesk","Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,system-ui,sans-serif;
+  --body:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,"Roboto Mono",monospace;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--body);font-size:14px;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:
+  radial-gradient(900px 500px at 80% -10%,rgba(139,123,255,.10),transparent 60%),
+  radial-gradient(700px 420px at -10% 10%,rgba(124,247,212,.07),transparent 60%),var(--bg)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.hd{position:sticky;top:0;z-index:20;padding:calc(var(--sat) + 10px) 16px 10px;display:flex;align-items:center;gap:10px;
+  background:linear-gradient(var(--bg) 70%,rgba(6,7,11,0));}
+.logo{font-family:var(--sans);font-weight:700;letter-spacing:.14em;font-size:13px}
+.logo b{color:var(--ac)}
+.sp{flex:1}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:4px 8px;border-radius:99px;border:1px solid var(--line2);color:var(--mut);white-space:nowrap}
+.pill.paper{color:var(--warn);border-color:rgba(255,204,102,.35)}
+.fr{display:flex;align-items:center;gap:6px}
+.fr{font-size:11px;font-weight:600;padding:5px 10px;background:rgba(255,255,255,.03)}
+.fr i{width:7px;height:7px;border-radius:50%;background:var(--dim);display:inline-block}
+.fr.live{color:var(--good);border-color:rgba(92,242,160,.35);background:rgba(92,242,160,.07)} .fr.live i{background:var(--good);box-shadow:0 0 8px var(--good);animation:blink 1.6s infinite}
+.fr.stale{color:var(--warn);border-color:rgba(255,204,102,.4);background:rgba(255,204,102,.07)} .fr.stale i{background:var(--warn)}
+.fr.snap{color:var(--ac2);border-color:rgba(139,123,255,.4);background:rgba(139,123,255,.08)} .fr.snap i{background:var(--ac2)}
+.fr.disc{color:var(--bad);border-color:rgba(255,107,139,.4);background:rgba(255,107,139,.08)} .fr.disc i{background:var(--bad)}
+@keyframes blink{50%{opacity:.35}}
+main{padding:0 14px calc(var(--sab) + 92px)}
+.tab{display:none}.tab.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+h2{font-family:var(--sans);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:20px 2px 10px;font-weight:600;display:flex;align-items:center;gap:8px}
+h2 small{font-family:var(--mono);letter-spacing:0;text-transform:none;color:var(--dim);font-weight:400}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:16px;padding:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.k{font-size:10.5px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
+.v{font-family:var(--mono);font-size:17px;margin-top:4px;font-variant-numeric:tabular-nums}
+.v.s{font-size:14px}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.moon{color:var(--moon)}.mut{color:var(--mut)}.dim{color:var(--dim)}
+/* ---------- brain ---------- */
+.brain{position:relative;overflow:hidden;padding:18px 16px 16px;border-radius:22px;border:1px solid var(--line2);
+  background:radial-gradient(420px 260px at 50% 0%,rgba(124,247,212,.09),transparent 70%),linear-gradient(180deg,#0d1019,#0a0c13)}
+.brain .row{display:flex;gap:16px;align-items:center}
+.orb{position:relative;width:104px;height:104px;flex:none}
+.orb .core{position:absolute;inset:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,var(--oc,#7cf7d4) 22%,rgba(0,0,0,.0) 72%);
+  box-shadow:0 0 34px var(--oc,#7cf7d4),inset 0 0 18px rgba(255,255,255,.25);animation:pulse var(--op,2.4s) ease-in-out infinite}
+.orb .ring{position:absolute;inset:6px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--oc,#7cf7d4) 55%,transparent);animation:spin 14s linear infinite}
+.orb .ring2{position:absolute;inset:0;border-radius:50%;border:1px solid color-mix(in srgb,var(--oc,#7cf7d4) 25%,transparent);
+  border-top-color:var(--oc,#7cf7d4);animation:spin var(--os,3s) linear infinite}
+.orb svg{position:absolute;inset:0}
+.orb>div{animation-delay:var(--od,0s)!important}
+@keyframes pulse{0%,100%{transform:scale(.92);opacity:.85}50%{transform:scale(1.04);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.brain.frozen .orb *{animation-play-state:paused!important}
+.brain.frozen{filter:grayscale(1) brightness(.75);padding-top:40px}
+.brain.frozen::after{content:attr(data-freeze);position:absolute;right:12px;top:12px;font-family:var(--mono);font-size:10px;color:var(--warn);
+  border:1px solid rgba(255,204,102,.4);padding:3px 7px;border-radius:8px;filter:none}
+.st{font-family:var(--sans);font-weight:700;font-size:24px;letter-spacing:.02em;line-height:1.05}
+.stx{color:var(--mut);font-size:12.5px;margin-top:6px;line-height:1.35}
+.dec{display:inline-flex;gap:6px;align-items:center;margin-top:8px;font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:7px;
+  background:rgba(255,204,102,.08);color:var(--warn);border:1px solid rgba(255,204,102,.25)}
+.dec.ai{background:rgba(124,247,212,.08);color:var(--ac);border-color:rgba(124,247,212,.3)}
+.meters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.meter{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:12px;padding:8px}
+.meter .k{font-size:9px}.meter .v{font-size:14px;margin-top:3px}
+.bar{height:3px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}.bar>b{display:block;height:100%;background:var(--ac);border-radius:3px}
+.banner{margin-top:12px;padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.35}
+.banner.bad{background:rgba(255,107,139,.08);border:1px solid rgba(255,107,139,.3);color:#ffc2cf}
+.banner.warn{background:rgba(255,204,102,.07);border:1px solid rgba(255,204,102,.28);color:#ffe3a8}
+/* ---------- pipeline ---------- */
+.pipe{display:flex;align-items:stretch;gap:0;margin-top:2px}
+.pst{flex:1;text-align:center;padding:10px 2px;position:relative}
+.pst .n{font-family:var(--mono);font-size:18px}
+.pst .l{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.pst+.pst::before{content:"";position:absolute;left:-4px;top:50%;width:8px;height:8px;border-top:1px solid var(--dim);border-right:1px solid var(--dim);transform:translateY(-50%) rotate(45deg)}
+.feed{display:flex;flex-direction:column;gap:8px}
+.tc{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:11px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);
+  animation:slide .35s ease}
+.tc.old{animation:none}
+@keyframes slide{from{opacity:0;transform:translateX(-6px)}to{opacity:1}}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:3px 6px;border-radius:6px;border:1px solid;white-space:nowrap}
+.c-rej{color:var(--bad);border-color:rgba(255,107,139,.35);background:rgba(255,107,139,.06)}
+.c-ent{color:var(--ac);border-color:rgba(124,247,212,.35);background:rgba(124,247,212,.06)}
+.c-tp{color:var(--good);border-color:rgba(92,242,160,.35);background:rgba(92,242,160,.06)}
+.c-ex{color:var(--warn);border-color:rgba(255,204,102,.35);background:rgba(255,204,102,.06)}
+.c-moon{color:var(--moon);border-color:rgba(201,167,255,.35);background:rgba(201,167,255,.06)}
+.c-fill{color:var(--mut);border-color:var(--line2)}
+.c-nof{color:var(--bad);border-color:rgba(255,107,139,.5);background:rgba(255,107,139,.12)}
+.tsym{font-family:var(--sans);font-weight:700;font-size:15px}
+.tmeta{font-family:var(--mono);font-size:10.5px;color:var(--mut);margin-top:3px;line-height:1.45}
+.why{font-size:11.5px;color:#b9c0d4;margin-top:5px;line-height:1.35}
+.tr{text-align:right;font-family:var(--mono);font-size:11px;color:var(--mut)}
+.tr b{display:block;font-size:13px;color:var(--tx);font-weight:500}
+/* ---------- positions ---------- */
+.pos{padding:13px;border-radius:16px;background:var(--card);border:1px solid var(--line);margin-bottom:9px;cursor:pointer}
+.pos .top{display:flex;align-items:center;gap:8px}
+.mult{font-family:var(--mono);font-size:20px;margin-left:auto}
+.lock{font-family:var(--mono);font-size:9.5px;color:var(--moon);border:1px solid rgba(201,167,255,.35);padding:2px 6px;border-radius:6px}
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:flex-end}
+.sheet.on{display:flex}
+.sheet .in{width:100%;max-height:86vh;overflow:auto;background:var(--bg2);border-top-left-radius:22px;border-top-right-radius:22px;border:1px solid var(--line2);
+  padding:10px 16px calc(var(--sab) + 18px);animation:up .25s ease}
+@keyframes up{from{transform:translateY(30px);opacity:.4}}
+.grab{width:38px;height:4px;border-radius:4px;background:var(--line2);margin:2px auto 12px}
+.ev{display:grid;grid-template-columns:16px 1fr auto;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ev .dot{width:9px;height:9px;border-radius:50%;margin-top:4px}
+/* ---------- scanner ---------- */
+.cand{padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);margin-bottom:8px}
+.checks{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.ck{font-family:var(--mono);font-size:9.5px;padding:3px 6px;border-radius:6px;border:1px solid var(--line2);color:var(--mut)}
+.ck.ok{color:var(--good);border-color:rgba(92,242,160,.3)} .ck.no{color:var(--bad);border-color:rgba(255,107,139,.3)}
+.hbar{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;font-size:12px;margin:7px 0}
+.hbar .t{height:6px;background:var(--line);border-radius:6px;overflow:hidden;grid-column:1/3}.hbar .t b{display:block;height:100%;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+th{color:var(--mut);font-weight:500;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+td:first-child,th:first-child{text-align:left}
+.note{font-size:11px;color:var(--dim);line-height:1.45;margin-top:8px}
+/* ---------- nav ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(6,1fr);padding:8px 6px calc(var(--sab) + 8px);
+  background:rgba(8,9,14,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line)}
+nav button{background:none;border:0;color:var(--dim);font-family:var(--body);font-size:9.5px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+nav button.on{color:var(--ac)}
+.empty{padding:26px 14px;text-align:center;color:var(--mut);font-size:13px;border:1px dashed var(--line2);border-radius:14px}
+.gate{margin:40px 4px;padding:20px;border-radius:18px;border:1px solid var(--line2);background:var(--card);line-height:1.5}
+
+/* ---------- desk: tablet (760–1199) and desktop (≥1200) command center; the phone layout above is untouched ---------- */
+#desk,.dnav,.lsub,.xbtn{display:none}
+@media (min-width:760px){
+  main,nav{display:none!important}
+  #desk{display:block;padding:0 18px 22px}
+  .hd{padding:14px 18px 12px;gap:12px;background:rgba(6,7,11,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .logo{font-size:15px}
+  .dnav{display:flex;gap:6px;margin-left:10px}
+  .dnav button{background:var(--card);border:1px solid var(--line2);color:var(--mut);font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:6px 11px;border-radius:9px;cursor:pointer}
+  .dnav button:hover{color:var(--tx);border-color:var(--ac2)}
+  .hd .fr{font-size:14px;letter-spacing:.08em;padding:8px 16px 8px 13px;border-radius:12px;gap:9px}
+  .hd .fr i{width:10px;height:10px}
+  .lsub{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right;line-height:1.3;max-width:260px}
+  .hstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;margin:12px 0;border:1px solid var(--line);border-radius:14px;background:var(--line);overflow:hidden}
+  .hs{padding:8px 12px;min-width:0;background:linear-gradient(180deg,var(--card2),var(--card))}
+  .hs .k{font-size:9px;white-space:nowrap}
+  .hs .v{font-size:12.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dgrid{display:grid;gap:14px;grid-template-columns:1fr 1fr;grid-template-areas:"core core" "scan pos" "feed perf"}
+  .pn{background:linear-gradient(180deg,rgba(19,23,36,.75),rgba(15,18,27,.75));border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;min-height:0;min-width:0}
+  .pn>header{display:flex;align-items:center;gap:8px;padding:12px 14px 0;font-family:var(--sans);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);font-weight:600}
+  .pn>header small{font-family:var(--mono);letter-spacing:0;text-transform:none;color:var(--dim);font-weight:400;margin-left:auto}
+  .pn>header .dotl{width:6px;height:6px;border-radius:50%;background:var(--ac)}
+  .pb{padding:10px 14px 14px;overflow:auto;min-height:0;max-height:72vh;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+  .a-core{grid-area:core}.a-scan{grid-area:scan}.a-pos{grid-area:pos}.a-feed{grid-area:feed}.a-perf{grid-area:perf}
+  .a-core .pb{max-height:none}
+  .pb h2{margin:14px 2px 8px;font-size:10.5px}
+  .pb h2:first-child{margin-top:2px}
+  .brain.desk .orb{width:132px;height:132px}
+  .brain.desk .orb .core{inset:28px}
+  .brain.desk .st{font-size:30px}
+  .brain.desk .meters{grid-template-columns:repeat(4,1fr)}
+  .brain .pipe{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.015)}
+  .sheet{align-items:stretch;justify-content:flex-end}
+  .sheet .in{width:min(620px,92vw);max-height:none;height:100%;border-radius:22px 0 0 22px;padding:14px 22px 22px;animation:side .22s ease}
+  @keyframes side{from{transform:translateX(30px);opacity:.4}}
+  .grab{display:none}
+  .xbtn{display:block;position:sticky;top:0;float:right;background:var(--card);border:1px solid var(--line2);color:var(--mut);border-radius:9px;padding:5px 10px;font-family:var(--mono);font-size:11px;cursor:pointer;z-index:2}
+}
+@media (min-width:760px) and (max-width:1199px){.hstrip{grid-template-columns:repeat(6,minmax(0,1fr))}.hs:last-child{grid-column:span 2}}
+@media (min-width:1200px) and (min-height:620px){
+  html,body{height:100%;overflow:hidden}
+  body{display:flex;flex-direction:column}
+  .hd{flex:none;position:relative}
+  #desk{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 18px 16px}
+  .hstrip{flex:none}
+  .dgrid{flex:1;min-height:0;grid-template-columns:minmax(340px,1.1fr) minmax(300px,1fr) minmax(320px,1.05fr);
+    grid-template-rows:minmax(0,1.2fr) minmax(0,1fr);grid-template-areas:"core scan pos" "perf scan feed"}
+  .pb{max-height:none;flex:1}
+  .hstrip{grid-template-columns:repeat(11,minmax(0,1fr))}
+}
+@media (min-width:1400px) and (min-height:620px){
+  .dgrid{grid-template-columns:minmax(360px,1.12fr) minmax(300px,1fr) minmax(300px,1fr) minmax(300px,1fr);
+    grid-template-rows:auto minmax(0,1fr);grid-template-areas:"core scan pos feed" "perf scan pos feed"}
+  .a-core .pb{flex:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="hd">
+  <div class="logo">DEGEN<b>·</b>DESK</div>
+  <span class="pill paper">PAPER</span>
+  <div class="dnav" id="dnav"><button data-d="history">HISTORY</button><button data-d="performance">PERFORMANCE</button><button data-d="health">HEALTH</button></div>
+  <div class="sp"></div>
+  <div class="lsub" id="lsub"></div>
+  <span id="fresh" class="pill fr disc"><i></i><span>CONNECTING</span></span>
+</div>
+<main id="main">
+  <section class="tab on" id="t-command"></section>
+  <section class="tab" id="t-positions"></section>
+  <section class="tab" id="t-scanner"></section>
+  <section class="tab" id="t-history"></section>
+  <section class="tab" id="t-performance"></section>
+  <section class="tab" id="t-health"></section>
+</main>
+<div id="desk">
+  <div class="hstrip" id="hstrip"></div>
+  <div class="dgrid">
+    <section class="pn a-core"><header><span class="dotl"></span>Bot core<small id="h-core"></small></header><div class="pb" id="d-core"></div></section>
+    <section class="pn a-scan"><header><span class="dotl" style="background:var(--ac2)"></span>Live scanner<small id="h-scan"></small></header><div class="pb" id="d-scan"></div></section>
+    <section class="pn a-pos"><header><span class="dotl" style="background:var(--good)"></span>Open positions<small id="h-pos"></small></header><div class="pb" id="d-pos"></div></section>
+    <section class="pn a-feed"><header><span class="dotl" style="background:var(--warn)"></span>Activity feed<small id="h-feed"></small></header><div class="pb" id="d-feed"></div></section>
+    <section class="pn a-perf"><header><span class="dotl" style="background:var(--moon)"></span>Performance<small id="h-perf"></small></header><div class="pb" id="d-perf"></div></section>
+  </div>
+</div>
+<div class="sheet" id="sheet"><div class="in" id="sheetIn"></div></div>
+<nav id="nav"></nav>
+<script>
+"use strict";
+/* DEGEN DESK cockpit — static, read-only, no CDN, no build. Data arrives AES-256-GCM-encrypted from public relays;
+   the key and relay settings live only in this URL's #fragment, which browsers never send to any server. */
+const TABS=[["command","Command",'<circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/>'],
+ ["positions","Positions",'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 15l3-3 2 2 3-4"/>'],
+ ["scanner","Scanner",'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8v3h3"/>'],
+ ["history","History",'<path d="M4 12a8 8 0 1 0 2.3-5.7M4 5v4h4M12 8v4l3 2"/>'],
+ ["performance","Perf",'<path d="M4 19V5M4 19h16M7 15l4-4 3 3 5-6"/>'],
+ ["health","Health",'<path d="M3 12h4l2-5 4 10 2-5h6"/>']];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const L=1e9, sol=(l,d=4)=>l==null?"—":(l/L).toFixed(d), ssol=(l,d=4)=>l==null?"—":((l>=0?"+":"")+(l/L).toFixed(d));
+const cls=v=>v==null?"mut":v>0?"good":v<0?"bad":"mut";
+const ago=ms=>{if(ms==null)return"—";const s=Math.max(0,Math.round(ms/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m":Math.floor(s/3600)+"h"+String(Math.floor(s%3600/60)).padStart(2,"0")};
+const clock=t=>{const d=new Date(t);return d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZone:"America/Mexico_City"})};
+const b64u=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"===".slice((s.length+3)%4)),c=>c.charCodeAt(0));
+const F=Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const S={data:null,full:null,rx:{},tx:{mqtt:"off",ably:"off",ntfy:"off"},lastSeq:{},tab:"command",lastFrame:0,lastKind:null,boxDelay:null,err:null,frames:0};
+let KEY=null;
+
+/* ---------------- crypto ---------------- */
+async function openEnv(text){
+  const e=JSON.parse(text); if(e.v!==1) throw Error("bad version");
+  const aad=new TextEncoder().encode(`dd1|${e.k}|${e.s}|${e.t}`);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64u(e.iv),additionalData:aad},KEY,b64u(e.c));
+  const js=await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  return [e,JSON.parse(js)];
+}
+async function onMsg(text,via,retained){
+  let e,o; try{[e,o]=await openEnv(text)}catch(x){S.err="decrypt/verify failed ("+via+")";return}
+  // replay / reorder protection: never apply data older than what is already shown
+  if(S.data && o.gen < S.data.gen) return;
+  const now=Date.now(); S.rx[via]=now; S.frames++;
+  if(via==="mqtt"||via==="ably"){ if(retained){S.retRx=now;S.retT=e.t} else S.liveRx=now; }
+  S.src=via; S.lastT=e.t; S.lastRx=now;
+  if(e.k==="full"||e.k==="snap"){ if(e.k==="full"||!S.full||o.gen>S.full.gen) S.full=o; S.data=Object.assign({},S.data||{},o);}
+  else{ const keep=S.data||{}; S.data=Object.assign({},keep,o,{engine:Object.assign({},keep.engine||{},o.engine)}); }
+  S.lastFrame=Date.now(); S.lastKind=e.k; S.boxDelay=e.t-o.gen;
+  render();
+}
+
+/* ---------------- MQTT 3.1.1 over WSS (hand-rolled, QoS0 subscribe) ---------------- */
+function mqttStr(s){const b=new TextEncoder().encode(s);return [b.length>>8,b.length&255,...b]}
+function mqttPkt(h,body){const len=[];let n=body.length;do{let d=n%128;n=Math.floor(n/128);if(n>0)d|=128;len.push(d)}while(n>0);return new Uint8Array([h,...len,...body])}
+function mqtt(){
+  if(!F.mq||!F.mt) return;
+  let ws,buf=new Uint8Array(0),ping,retry=1000;
+  const go=()=>{
+    S.tx.mqtt="connecting"; render();
+    if(S.paused) return;
+    try{ws=new WebSocket(F.mq,["mqtt"]);S.ws=ws}catch(x){S.tx.mqtt="error";return setTimeout(go,retry=Math.min(retry*2,30000))}
+    ws.binaryType="arraybuffer";
+    ws.onopen=()=>{
+      const flags=0x02|(F.mu?0x80:0)|(F.mp?0x40:0);
+      const body=[...mqttStr("MQTT"),4,flags,0,30,...mqttStr("ddc"+Math.random().toString(16).slice(2,10)),...(F.mu?mqttStr(F.mu):[]),...(F.mp?mqttStr(F.mp):[])];
+      ws.send(mqttPkt(0x10,body));
+    };
+    ws.onmessage=ev=>{
+      const a=new Uint8Array(ev.data),nb=new Uint8Array(buf.length+a.length);nb.set(buf);nb.set(a,buf.length);buf=nb;
+      for(;;){ // one WS frame can carry several MQTT packets (e.g. SUBACK + retained PUBLISH)
+        if(buf.length<2)break; let i=1,m=1,n=0,d;
+        do{if(i>=buf.length)return;d=buf[i++];n+=(d&127)*m;m*=128}while(d&128);
+        if(buf.length<i+n)break; const p=buf.slice(0,i+n); buf=buf.slice(i+n); const t=p[0]>>4;
+        if(t===2){ if(p[i+1]!==0){S.tx.mqtt="refused";render();return}
+          ws.send(mqttPkt(0x82,[0,1,...mqttStr(F.mt+"/full"),0,...mqttStr(F.mt+"/live"),0]));
+          S.tx.mqtt="connected";retry=1000;clearInterval(ping);ping=setInterval(()=>{try{ws.send(new Uint8Array([0xc0,0]))}catch(x){}},20000);render();}
+        else if(t===3){ const qos=(p[0]>>1)&3; const tl=(p[i]<<8)|p[i+1]; let j=i+2+tl; if(qos)j+=2;
+          onMsg(new TextDecoder().decode(p.slice(j)),"mqtt",!!(p[0]&1)); }
+      }
+    };
+    ws.onclose=()=>{clearInterval(ping);S.tx.mqtt="reconnecting";render();setTimeout(go,retry=Math.min(retry*2,30000))};
+    ws.onerror=()=>{try{ws.close()}catch(x){}};
+  };
+  go();
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&ws&&ws.readyState>1)go()});
+}
+/* ---------------- Ably SSE (optional push relay; only if the fragment carries ak + ac) ----------------
+   Subscribe-only key, EventSource (no SDK, no CDN). rewind=1 replays the last message on (re)connect: that first
+   message is a cached copy, so it is flagged "retained" and judged by its envelope age, never as a live push. */
+function ably(){
+  if(!F.ak||!F.ac) return;
+  const host=(F.ah||"https://main.realtime.ably.net").replace(/\/$/,"");
+  let es,retry=2000;
+  const go=()=>{
+    if(S.paused) return; S.tx.ably="connecting"; let first=true;
+    try{ es=new EventSource(host+"/event-stream?v=1.2&rewind=1&channels="+encodeURIComponent(F.ac)+"&key="+encodeURIComponent(F.ak)); S.esA=es }
+    catch(x){ S.tx.ably="error"; return setTimeout(go,retry=Math.min(retry*2,30000)) }
+    es.onopen=()=>{S.tx.ably="connected";retry=2000;render()};
+    es.onmessage=ev=>{ try{ const m=JSON.parse(ev.data); if(typeof m.data==="string"){ onMsg(m.data,"ably",first); first=false } }catch(x){} };
+    es.onerror=()=>{ // EventSource retries by itself on network errors; on an Ably auth error it closes -> back off and reopen
+      S.tx.ably="reconnecting"; render();
+      if(es.readyState===2){ setTimeout(go,retry=Math.min(retry*2,30000)) } };
+  };
+  go();
+}
+/* ---------------- ntfy (encrypted ~6-min snapshots; NOT live) ---------------- */
+async function ntfy(){
+  if(!F.nb||!F.nt) return; const base=F.nb.replace(/\/$/,"")+"/"+F.nt;
+  try{ S.tx.ntfy="polling";
+    const r=await fetch(base+"/json?poll=1&since=12h",{cache:"no-store"}); const lines=(await r.text()).trim().split("\n").filter(Boolean);
+    const msgs=lines.map(l=>JSON.parse(l)).filter(m=>m.event==="message");
+    if(msgs.length) await onMsg(msgs[msgs.length-1].message,"ntfy");
+    S.tx.ntfy="subscribed";
+  }catch(x){S.tx.ntfy="error"}
+  try{ const es=new EventSource(base+"/sse"); S.es=es; es.onmessage=ev=>{try{const m=JSON.parse(ev.data);if(m.event==="message")onMsg(m.message,"ntfy")}catch(x){}};
+       es.onerror=()=>{S.tx.ntfy="retrying"}; es.onopen=()=>{S.tx.ntfy="subscribed"} }catch(x){}
+  render();
+}
+/* ---------------- freshness: LIVE only if a push frame arrived recently ---------------- */
+/*FRESH-BEGIN*/
+// Pure classifier (unit-tested from tests/test_cockpit.py via node). Inputs are receipt times (this device's clock) and
+// envelope times (box clock). A non-retained MQTT frame is a genuine push → judged by receipt time (skew-free). A retained
+// MQTT frame (or an Ably rewind replay) is a cached copy → judged by its envelope age. ntfy frames are periodic snapshots and can never be LIVE.
+const LIVE_MS=15000, SNAP_MAX_MS=15*60000, ENGINE_MAX_MS=15000;
+function classify(now,x){
+  const ago_=ms=>{if(ms==null)return"—";const s=Math.max(0,Math.round(ms/1000));return s<60?s+"s":s<3600?Math.floor(s/60)+"m":Math.floor(s/3600)+"h"+String(Math.floor(s%3600/60)).padStart(2,"0")};
+  const conn=x.mqtt==="connected"||x.ably==="connected", ntfyUp=x.ntfy==="subscribed"||x.ntfy==="polling";
+  if(!x.hasData) return {c:"disc",t:(conn||ntfyUp)?"WAITING":"CONNECTING",live:false,age:null,why:"no data received yet"};
+  const env=(t,rx)=>t==null?rx:Math.min(t,rx);                       // never trust an envelope time in this device's future
+  const age=now-env(x.lastT,x.lastRx);                                // age of the newest data shown
+  const push=x.liveRx!=null?now-x.liveRx:null;
+  const ret=x.retRx!=null?now-env(x.retT,x.retRx):null;
+  const mqFresh=conn&&((push!=null&&push<=LIVE_MS)||(ret!=null&&ret<=LIVE_MS));
+  const eng=x.boxDelay!=null&&x.boxDelay>ENGINE_MAX_MS;               // box-clock only: publish time − engine state time
+  if(mqFresh&&!eng){const a=push!=null&&push<=LIVE_MS?push:ret;return {c:"live",t:"LIVE · "+ago_(a),live:true,age:a,why:"encrypted push frame "+ago_(a)+" ago"}}
+  if(mqFresh&&eng) return {c:"stale",t:"STALE · engine "+ago_(x.boxDelay),live:false,age:x.boxDelay,why:"relay is live but the engine state is not updating"};
+  if(!conn&&!ntfyUp) return {c:"disc",t:"DISCONNECTED · "+ago_(age),live:false,age,why:"no relay connected; showing data "+ago_(age)+" old"};
+  if(x.src==="ntfy"&&age<=SNAP_MAX_MS) return {c:"snap",t:"SNAPSHOT · "+ago_(age)+" old",live:false,age,why:"no live push; periodic encrypted snapshot (~6 min cadence)"};
+  return {c:"stale",t:"STALE · "+ago_(age),live:false,age,why:"no push frame in the last 15 s"};
+}
+/*FRESH-END*/
+function freshness(){
+  return classify(Date.now(),{hasData:!!S.data,mqtt:S.tx.mqtt,ably:S.tx.ably,ntfy:S.tx.ntfy,liveRx:S.liveRx,retRx:S.retRx,retT:S.retT,
+    src:S.src,lastT:S.lastT,lastRx:S.lastRx,boxDelay:S.boxDelay});
+}
+
+/* ---------------- helpers ---------------- */
+function syms(d){const m={};for(const x of [...(d.trades||[]),...(d.positions||[]),...(d.engine?.cands||[]),...(d.moonbags||[])])if(x.mint&&(x.sym))m[x.mint]=x.sym;
+  for(const a of d.activity||[]) if(a.symbol&&a.mint) m[a.mint]=a.symbol; return m}
+const isTest=m=>((S.data&&S.data.recon&&S.data.recon.test_mints)||[]).includes(m);
+const short=m=>m?m.slice(0,4)+"…"+m.slice(-4):"?";
+function decLabel(d){return d.is_ai?`<span class="dec ai">◆ GROK AI</span>`:`<span class="dec">◇ MOCK · rule-based · not Grok AI</span>`}
+function stageOf(a){
+  if(a.outcome==="insufficient_simulated_funds") return ["NO FUNDS","c-nof"];
+  if(a.stage==="fill") return a.side==="buy"?["FILLED BUY","c-fill"]:["FILLED SELL","c-fill"];
+  if(a.stage==="entry") return a.outcome==="order_pending"?["ENTER","c-ent"]:a.outcome==="rejected"||a.rail_reasons?["REJECT","c-rej"]:[String(a.outcome||"ENTRY").toUpperCase(),"c-rej"];
+  if(a.stage==="exit"){const x=a.action||""; if(/tp|take_profit|partial/.test(x))return["PARTIAL TP","c-tp"]; if(/handover|moon/.test(x))return["MOONBAG","c-moon"]; return["EXIT · "+x.replace(/_/g," ").toUpperCase(),"c-ex"]}
+  if(/handover|moon/.test(a.action||"")) return ["MOONBAG","c-moon"];
+  return [String(a.stage||a.outcome||"EVENT").toUpperCase(),"c-fill"];
+}
+function card(a,m){
+  const [lab,c]=stageOf(a), s=a.symbol||m[a.mint]||short(a.mint), f=a.f||{};
+  const meta=[];
+  if(f.real_sol!=null) meta.push("liq "+f.real_sol.toFixed(1)+" SOL");
+  if(f.progress!=null) meta.push("curve "+Math.round(f.progress*100)+"%");
+  if(f.buy_sol_60!=null) meta.push("flow60 "+f.buy_sol_60.toFixed(1));
+  if(f.ub_60!=null) meta.push(f.ub_60+" buyers");
+  if(f.age_s!=null) meta.push("age "+f.age_s+"s");
+  if(a.size_lamports) meta.push("size "+sol(a.size_lamports,3));
+  if(a.value_lamports!=null&&a.cost_lamports) meta.push("exec "+(a.value_lamports/a.cost_lamports).toFixed(2)+"x");
+  if(a.stage==="fill") meta.push(a.side==="buy"?("paid "+sol(a.amount_in,4)+" SOL"):("got "+sol(a.amount_out,4)+" SOL"), "lat "+a.latency_ms+"ms");
+  if(a.expected_impact_pct!=null) meta.push("impact "+a.expected_impact_pct.toFixed(2)+"%");
+  const why=a.reason||(a.rail_reasons||[]).join(", ");
+  const flags=(a.risk_flags||[]).map(x=>`<span class="chip c-ex" style="margin-left:4px">⚑ ${esc(x.replace(/_/g," "))}</span>`).join("");
+  const fresh=a.ts_ms>(S.seen||0); S.seenMax=Math.max(S.seenMax||0,a.ts_ms||0);
+  return `<div class="tc${fresh?"":" old"}"><span class="chip ${c}">${esc(lab)}</span><div><div class="tsym">${esc(s)}</div>
+   <div class="tmeta">${esc(meta.join(" · "))}</div>${why?`<div class="why">${esc(why)}</div>`:""}${flags?`<div style="margin-top:5px">${flags}</div>`:""}</div>
+   <div class="tr"><b>${clock(a.ts_ms)}</b>${esc(a.provider==="MOCK"?"MOCK":a.provider||"")}<br>${esc(a.policy||"")}</div></div>`;
+}
+function spark(pts,{w=340,h=90,base=null,markers=[],color="#7cf7d4",fmt=v=>v}={}){
+  if(!pts||pts.length<2) return `<div class="empty" style="padding:16px">Not enough points yet (${pts?pts.length:0}). Series is sampled on the box and grows over time.</div>`;
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]).concat(base!=null?[base]:[]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const X=x=>6+(x-x0)/((x1-x0)||1)*(w-12),Y=y=>h-8-(y-y0)/((y1-y0)||1)*(h-18);
+  const d=pts.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join(" ");
+  const area=d+` L${X(x1).toFixed(1)} ${h} L${X(x0).toFixed(1)} ${h} Z`;
+  const mk=markers.filter(m=>m.t>=x0&&m.t<=x1).map(m=>`<line x1="${X(m.t)}" x2="${X(m.t)}" y1="4" y2="${h-4}" stroke="${m.c}" stroke-dasharray="2 3" opacity=".8"/><circle cx="${X(m.t)}" cy="10" r="3.5" fill="${m.c}"/>`).join("");
+  const bl=base!=null?`<line x1="0" x2="${w}" y1="${Y(base)}" y2="${Y(base)}" stroke="#5a6279" stroke-dasharray="3 4"/>`:"";
+  const id="g"+Math.random().toString(36).slice(2,7);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+   ${bl}<path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/>${mk}</svg>
+   <div class="tmeta" style="display:flex;justify-content:space-between"><span>${clock(x0)}</span><span>min ${fmt(y0)} · max ${fmt(y1)}</span><span>${clock(x1)}</span></div>`;
+}
+const STATE_COL={SCANNING:"#7cf7d4",MANAGING:"#8b7bff",ENTERING:"#5cf2a0",TAKING_PROFIT:"#5cf2a0",EXITING:"#ffcc66",REJECTED:"#ff6b8b",
+  NO_FUNDS:"#ff6b8b",DECIDED:"#7cf7d4",WARMING_UP:"#8a93ab",FEED_DEGRADED:"#ffcc66"};
+
+/* ---------------- tabs ---------------- */
+function brainHTML(d,fr,desk){
+  const e=d.engine||{},st=e.state||{},r=e.rates||{};
+  const code=st.code||"UNKNOWN", col=STATE_COL[code]||"#8a93ab";
+  const busy=/ENTER|TAKING|EXIT/.test(code)?"1.1s":code==="SCANNING"?"2.4s":"3.2s";
+  const used=d.slots?.used??0,cap=d.slots?.cap??0;
+  const nof=d.status==="INSUFFICIENT_SIMULATED_FUNDS";
+  return `<div class="brain${desk?" desk":""} ${fr.live?"":"frozen"}" data-freeze="${fr.live?"":"FROZEN · "+esc(fr.t)}">
+   <div class="row"><div class="orb" style="--oc:${col};--op:${busy};--os:${busy};--od:-${(performance.now()/1000).toFixed(2)}s"><div class="ring2"></div><div class="ring"></div><div class="core"></div></div>
+   <div style="min-width:0"><div class="k">engine state</div><div class="st" style="color:${col}">${esc(code.replace(/_/g," "))}</div>
+   <div class="stx">${esc(st.text||"")}</div>${decLabel(d)}</div></div>
+   <div class="meters">
+    <div class="meter"><div class="k">new /min</div><div class="v">${r.creates_60s??"—"}</div><div class="bar"><b style="width:${Math.min(100,(r.creates_60s||0)*2)}%"></b></div></div>
+    <div class="meter"><div class="k">eligible</div><div class="v">${r.eligible_60s??"—"}</div><div class="bar"><b style="width:${Math.min(100,(r.eligible_60s||0)*3)}%;background:var(--ac2)"></b></div></div>
+    <div class="meter"><div class="k">events/s</div><div class="v">${r.events_per_s!=null?Math.round(r.events_per_s):"—"}</div><div class="bar"><b style="width:${Math.min(100,(r.events_per_s||0)/3)}%;background:var(--warn)"></b></div></div>
+    <div class="meter"><div class="k">slots</div><div class="v">${used}/${cap}</div><div class="bar"><b style="width:${cap?used/cap*100:0}%;background:var(--good)"></b></div></div>
+   </div>
+   ${desk?pipeHTML(e.funnel||{}):""}
+   ${nof?`<div class="banner bad"><b>INSUFFICIENT SIMULATED FUNDS.</b> New entries stopped: free cash ${sol(d.risk?.free_cash)} SOL &lt; ${sol(d.risk?.need)} SOL needed per entry. Market observation and position management continue. No trades are faked; the bankroll is not topped up.</div>`:""}
+   ${d.risk?.breached?`<div class="banner warn">⚑ Would-be daily-loss breach today (${ssol(d.risk.today)} SOL vs −${sol(d.risk.limit,2)} limit). <b>Recorded as a flag only</b> (${esc(d.policy)}: no loss stop). Entries while breached: ${d.risk.entries_breached}.</div>`:""}
+  </div>`;
+}
+function pipeHTML(fn){
+  return `<div class="pipe">
+   <div class="pst"><div class="n">${fn.discovered??"—"}</div><div class="l">discovered</div></div>
+   <div class="pst"><div class="n">${fn.eligible??"—"}</div><div class="l">eligible</div></div>
+   <div class="pst"><div class="n" style="color:var(--ac2)">${fn.promoted??"—"}</div><div class="l">promoted</div></div>
+   <div class="pst"><div class="n" style="color:var(--ac)">${fn.entered??"—"}</div><div class="l">entered</div></div>
+   <div class="pst"><div class="n" style="color:var(--warn)">${fn.exits??"—"}</div><div class="l">exits</div></div></div>`;
+}
+function tCommand(d,fr){
+  const e=d.engine||{},fn=e.funnel||{},m=syms(d);
+  const ent=(d.activity||[]).slice(0,10);
+  return `${brainHTML(d,fr,false)}
+  <h2>Pipeline <small>${esc(fn.window||"")}</small></h2>
+  <div class="card" style="padding:4px 6px">${pipeHTML(fn)}</div>
+  <h2>Live decisions <small>newest first · executable values</small></h2>
+  <div class="feed">${ent.length?ent.map(a=>card(a,m)).join(""):`<div class="empty">No decisions yet. Idle means idle.</div>`}</div>`;
+}
+function posCard(p,isMoon){
+  const mult=p.mult, c=mult==null?"mut":mult>=1?"good":"bad";
+  return `<div class="pos" onclick="openPos('${esc(p.mint)}')"><div class="top"><span class="tsym">${esc(p.sym||short(p.mint))}</span>
+   ${p.tp1?`<span class="chip c-tp">TP1 ✓</span>`:""}${p.principal_back?`<span class="chip c-tp">principal back</span>`:""}${isMoon?`<span class="lock">🔒 MANUAL-ONLY</span>`:""}${isTest(p.mint)?`<span class="chip c-rej">TEST</span>`:""}
+   <span class="mult ${c}">${mult==null?"unpriced":mult.toFixed(2)+"x"}</span></div>
+   <div class="grid3" style="margin-top:10px">
+    <div><div class="k">exec value</div><div class="v s">${sol(p.exec)}</div></div>
+    <div><div class="k">cost left</div><div class="v s">${sol(p.cost)}</div></div>
+    <div><div class="k">realized · mint</div><div class="v s ${cls(p.real)}">${ssol(p.real)}</div></div></div>
+   <div class="tmeta" style="margin-top:8px">${esc(p.venue||"—")} · held ${p.age_s!=null?ago(p.age_s*1000):"—"} · agent ${sol(p.agent_exec)} · moonbag ${sol(p.moon_exec)}</div></div>`;
+}
+function tPositions(d){ return posSummary(d)+posLists(d) }
+function posSummary(d){
+  const ps=(d.positions||[]), agent=ps.filter(p=>p.agent_tok>0), unreal=d.bank?.unreal;
+  return `<div class="grid3">
+   <div class="card"><div class="k">open</div><div class="v">${agent.length}</div></div>
+   <div class="card"><div class="k">exec value</div><div class="v s">${sol(agent.reduce((a,p)=>a+(p.agent_exec||0),0))}</div></div>
+   <div class="card"><div class="k">unrealized</div><div class="v s ${cls(unreal)}">${unreal==null?"partial":ssol(unreal)}</div></div></div>
+  <div class="note">Values are <b>executable</b> sell quotes (after fees, slippage and price impact), not mid prices. Tap a position for its lifecycle.</div>`;
+}
+function posLists(d){
+  const ps=(d.positions||[]), moonM=new Set((d.moonbags||[]).map(x=>x.mint));
+  const agent=ps.filter(p=>p.agent_tok>0), moon=ps.filter(p=>moonM.has(p.mint));
+  return `<h2>Agent-managed <small>${agent.length}</small></h2>${agent.length?agent.map(p=>posCard(p,false)).join(""):`<div class="empty">No agent-managed positions.</div>`}
+  <h2>Moonbags <small>manual-only · read-only here</small></h2>
+  ${moon.length?moon.map(p=>posCard(p,true)).join(""):`<div class="empty">No moonbags.</div>`}
+  <div class="note">Moonbags were handed over manually; the agent never sells them and this cockpit cannot act on anything (read-only).</div>`;
+}
+window.openPos=mint=>{ S.drawer=null;
+  const d=S.data, full=S.full||d, p=(d.positions||[]).find(x=>x.mint===mint)||{};
+  const t=(full.trades||[]).filter(x=>x.mint===mint).sort((a,b)=>b.opened-a.opened)[0];
+  const ser=(full.engine?.series||{})[mint]||[];
+  const evs=(t?.ev||[]);
+  const col={entry:"#7cf7d4",buy:"#7cf7d4",sell:"#ffcc66",handover:"#c9a7ff"}, dcol=e=>e.side==="sell"&&/tp|take_profit|partial/.test(e.kind||"")?"#5cf2a0":(col[e.side]||"#8a93ab");
+  const markers=evs.map(e=>({t:e.ts,c:e.side==="buy"?"#7cf7d4":e.side==="handover"?"#c9a7ff":/tp|take_profit|partial/.test(e.kind||"")?"#5cf2a0":"#ffcc66"}));
+  const fees=evs.reduce((a,e)=>a+(e.net||0),0);
+  $("#sheetIn").innerHTML=`<button class="xbtn" onclick="closeSheet()">CLOSE ✕</button><div class="grab"></div><div style="display:flex;align-items:center;gap:8px"><span class="tsym" style="font-size:20px">${esc(p.sym||t?.sym||short(mint))}</span>
+   <span class="chip c-fill">${esc(t?.policy||d.policy)}</span><span class="chip c-ex">MOCK</span><span class="sp"></span>
+   <span class="mult ${p.mult>=1?"good":"bad"}">${p.mult==null?"unpriced":p.mult.toFixed(2)+"x"}</span></div>
+   <div class="tmeta" style="margin-top:4px">${esc(mint)}</div>
+   <h2>Multiple timeline <small>exec ÷ remaining cost · 15 s samples since engine start · markers = fills</small></h2>
+   <div class="card">${spark(ser,{base:1,markers,color:"#8b7bff",fmt:v=>v.toFixed(2)+"x"})}</div>
+   <div class="grid2" style="margin-top:10px">
+    <div class="card"><div class="k">invested</div><div class="v s">${sol(p.inv??t?.inv)}</div></div>
+    <div class="card"><div class="k">proceeds</div><div class="v s">${sol(p.proc??t?.proc)}</div></div>
+    <div class="card"><div class="k">realized</div><div class="v s ${cls(p.real)}">${ssol(p.real??t?.real)}</div></div>
+    <div class="card"><div class="k">remaining exposure</div><div class="v s">${sol(p.exec)}<span class="dim"> / cost ${sol(p.cost)}</span></div></div>
+    <div class="card"><div class="k">agent part</div><div class="v s">${sol(p.agent_exec)}</div></div>
+    <div class="card"><div class="k">moonbag</div><div class="v s moon">${sol(p.moon_exec)}${p.moon_tok?' 🔒':''}</div></div></div>
+   <h2>Lifecycle</h2>
+   ${evs.length?evs.map(e=>`<div class="ev"><span class="dot" style="background:${dcol(e)}"></span><div><b>${esc((e.kind||e.side).replace(/_/g," "))}</b>
+     <div class="why">${esc(e.why||e.reason||"")}</div><div class="tmeta">${e.impact!=null?"impact "+e.impact+"% · ":""}${e.lat!=null?"fill latency "+e.lat+"ms":""}</div></div>
+     <div class="tr"><b>${e.sol!=null?(e.side==="buy"?"−":"+")+sol(e.sol):""}</b>${clock(e.ts)}${e.pnl!=null?`<br><span class="${cls(e.pnl)}">${ssol(e.pnl)}</span>`:""}</div></div>`).join("")
+     :`<div class="empty">${S.full&&!S.full.compact?"No fill history for this mint in the latest full frame.":"Lifecycle loads with the next full frame (every 60 s); snapshots carry current values only."}</div>`}
+   <div class="note">Network/priority cost estimate per tx is modelled (${sol(d.assume?.net_cost_est,5)} SOL); fees already sit inside executable values. ${fees?"":""}Paper only.</div>`;
+  $("#sheet").classList.add("on");
+};
+$("#sheet").onclick=e=>{if(e.target.id==="sheet")closeSheet()};
+
+function radar(fn,np){
+  // funnel as concentric rings: discovered → eligible → promoted → entered (area ∝ count, sqrt scale)
+  const st=[["discovered",fn.discovered,"#5a6279"],["eligible",fn.eligible,"#7cf7d4"],["promoted",fn.promoted,"#8b7bff"],["entered",fn.entered,"#5cf2a0"]];
+  const mx=Math.max(1,fn.discovered||1);
+  const rings=st.map(([l,v,c],i)=>{const r=10+86*Math.sqrt((v||0)/mx);return `<circle cx="100" cy="100" r="${r.toFixed(1)}" fill="${c}" fill-opacity="${.08+i*.05}" stroke="${c}" stroke-opacity=".7"/>`}).join("");
+  return `<div style="display:flex;gap:12px;align-items:center"><svg viewBox="0 0 200 200" width="150" height="150" style="flex:none">
+   <circle cx="100" cy="100" r="96" fill="none" stroke="#1d2232"/><circle cx="100" cy="100" r="64" fill="none" stroke="#1d2232" stroke-dasharray="2 4"/>
+   ${rings}<line x1="100" y1="100" x2="100" y2="4" stroke="#7cf7d4" stroke-opacity=".5" style="transform-origin:100px 100px;animation:spin 6s linear infinite"/></svg>
+   <div style="flex:1">${st.map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;margin:5px 0"><span style="color:${c}">● ${l}</span><span class="mono">${v??"—"}</span></div>`).join("")}
+   <div class="tmeta">excluded: mayhem ${fn.mayhem_excluded??"—"} · non-SOL ${fn.non_sol_excluded??"—"}</div></div></div>`;
+}
+function bars(obj,color){const es=Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]);const mx=Math.max(1,...es.map(e=>e[1]));
+  return es.length?es.map(([k,v])=>`<div class="hbar"><span>${esc(k)}</span><span class="mono">${v}</span><div class="t"><b style="width:${v/mx*100}%;background:${color}"></b></div></div>`).join(""):`<div class="empty" style="padding:12px">none</div>`}
+function tScanner(d){
+  const e=d.engine||{},cs=e.cands||[];
+  return `<h2>Discovery radar <small>${esc(e.funnel?.window||"")}</small></h2><div class="card">${radar(e.funnel||{})}</div>
+  <h2>Candidates under evaluation <small>${e.rates?.active_candidates??"—"} tracked</small></h2>
+  ${candHTML(cs)}
+  <h2>Why not promoted now <small>tracked tokens, first failing check</small></h2><div class="card">${bars(e.notpromo,"var(--ac2)")}</div>
+  <h2>Why rejected <small>entry decisions · last 24 h · all policies</small></h2><div class="card">${bars(e.rej,"var(--bad)")}
+   <div class="note">“daily loss limit hit” rejections are from mock-v1/v2. mock-v3 has no loss stop; breaches are flags only.</div></div>`;
+}
+function candHTML(cs){
+  return `${cs.length?cs.map(c=>`<div class="cand"><div style="display:flex;align-items:center;gap:8px"><span class="tsym">${esc(c.sym||short(c.mint))}</span>
+    <span class="chip ${c.state==="promoted"?"c-ent":/reject/.test(c.state)?"c-rej":"c-fill"}">${esc((c.state||"").replace(/_/g," ").toUpperCase())}</span>
+    <span class="sp" style="flex:1"></span><span class="mono mut">${c.passed}/${(c.checks||[]).length} checks</span></div>
+    <div class="tmeta">mcap ${c.mcap!=null?c.mcap.toFixed(1)+" SOL":"—"} · liq ${c.real_sol!=null?c.real_sol.toFixed(1)+" SOL":"—"} · ${esc(c.venue||"")} ${c.progress!=null?Math.round(c.progress*100)+"%":""} · age ${c.age_s}s</div>
+    <div class="bar"><b style="width:${(c.progress||0)*100}%;background:linear-gradient(90deg,var(--ac),var(--ac2))"></b></div>
+    <div class="checks">${(c.checks||[]).map(k=>`<span class="ck ${k.ok?"ok":"no"}">${k.ok?"✓":"✗"} ${esc(k.l)} <b>${esc(typeof k.v==="number"?(Math.round(k.v*100)/100):k.v)}</b></span>`).join("")}</div>
+    ${c.next?`<div class="why">${esc(c.next)}</div>`:""}</div>`).join(""):`<div class="empty">No candidates right now.</div>`}`;
+}
+function tHistory(d){
+  const f=S.full||d, ts=(f.trades||[]), m=syms(f);
+  return `<h2>Trades <small>${ts.length} most recent · executable fills</small></h2>
+  ${ts.length?ts.map(t=>`<div class="pos" onclick="openPos('${esc(t.mint)}')"><div class="top"><span class="tsym">${esc(t.sym||short(t.mint))}</span>
+   <span class="chip c-fill">${esc(t.policy||"")}</span><span class="chip ${t.provider==="MOCK"?"c-ex":"c-ent"}">${esc(t.provider)}</span>${isTest(t.mint)?'<span class="chip c-rej">TEST · excl. from stats</span>':""}
+   ${t.mint&&(d.moonbags||[]).some(x=>x.mint===t.mint)?'<span class="lock">🔒 moonbag</span>':""}
+   ${t.closed?`<span class="mult ${cls(t.real)}" style="font-size:15px">${ssol(t.real)}</span>`:'<span class="mult" style="font-size:13px;color:var(--mut)">open</span>'}</div>
+   <div class="tmeta">${clock(t.opened)} → ${t.closed?clock(t.closed):"open"} · ${esc(t.status)} · in ${sol(t.inv)} · out ${sol(t.proc)} · ${(t.ev||[]).length} fills</div></div>`).join("")
+   :`<div class="empty">Trade history arrives with the next full frame (every 60 s).</div>`}
+  <h2>Decision log <small>${(f.activity||[]).length} newest</small></h2><div class="feed">${(f.activity||[]).slice(0,40).map(a=>card(a,m)).join("")}</div>`;
+}
+function tPerf(d){
+  const b=d.bank||{},r=d.risk||{},f=S.full||d,st=d.stats||{};
+  const eq=(f.equity||[]), snapOnly=!S.full||S.full.compact;
+  const closed=(f.trades||[]).filter(t=>t.closed).sort((a,b)=>a.closed-b.closed); let acc=0; const cum=closed.map(t=>[t.closed,(acc+=t.real)/L]);
+  const pol=Object.entries(st);
+  return `<div class="card"><div class="k">conservative equity <span class="dim">(cash + executable exit values; unpriced = 0)</span></div>
+   <div class="v" style="font-size:30px;margin-top:6px">${sol(b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
+   <div class="tmeta">start ${sol(b.start,2)} · ${b.unpriced?b.unpriced+" position(s) unpriced → counted as 0":"all priced"} · full equity ${b.eq==null?"n/a":sol(b.eq)}</div>
+   <div style="margin-top:10px">${snapOnly&&!eq.length?`<div class="empty" style="padding:16px">Equity history arrives with live full frames (every 60 s). Snapshots carry current numbers only.</div>`:spark(eq.map(p=>[p[0],p[1]/L]),{base:(b.start||0)/L,color:"#7cf7d4",fmt:v=>v.toFixed(3)})}</div></div>
+  <div class="grid2" style="margin-top:10px">
+   <div class="card"><div class="k">cash</div><div class="v">${sol(b.cash)}</div></div>
+   <div class="card"><div class="k">realized</div><div class="v ${cls(b.real)}">${ssol(b.real)}</div></div>
+   <div class="card"><div class="k">unrealized</div><div class="v ${cls(b.unreal)}">${b.unreal==null?"n/a":ssol(b.unreal)}</div></div>
+   <div class="card"><div class="k">max drawdown</div><div class="v bad">${r.dd_pct!=null?r.dd_pct.toFixed(1)+"%":"—"}</div><div class="tmeta">peak ${sol(r.peak,3)} · ${sol(r.dd,3)} SOL</div></div>
+   <div class="card"><div class="k">fees paid</div><div class="v s">${sol(b.fees)}</div></div>
+   <div class="card"><div class="k">failed tx</div><div class="v s">${b.failed??"—"}</div></div></div>
+  <h2>Cumulative realized <small>closed trades in view</small></h2><div class="card">${spark(cum,{base:0,color:"#ffcc66",fmt:v=>v.toFixed(3)})}</div>
+  <h2>By policy <small>reconciled ledger · excl. TEST</small></h2><div class="card"><table><tr><th>policy</th><th>trades</th><th>closed</th><th>W/L</th><th>realized</th></tr>
+   ${pol.map(([k,v])=>`<tr><td>${esc(k)}${k===d.policy?' <span class="good">●</span>':""}</td><td>${v.trades}</td><td>${v.closed}</td><td>${v.wins}/${v.closed-v.wins}</td><td class="${cls(v.realized_lamports)}">${ssol(v.realized_lamports)}</td></tr>`).join("")}</table>
+   <div class="note">Small samples. These are MOCK rule-based paper results with modelled latency (${d.assume?.latency_ms} ms) and slippage cap (${(d.assume?.slip_bps||0)/100}%); not evidence of a profitable strategy.</div></div>`;
+}
+function tHealth(d,fr){
+  const fd=d.feed||{},c=(S.full||d).coverage,e=d.engine||{},lat=e.lat||[],r=d.risk||{};
+  const now=Date.now();
+  const lmax=Math.max(1,...lat.map(x=>x.decision_to_fill_ms||0));
+  return `<div class="card"><div class="k">cockpit link</div><div class="v s ${fr.c==="live"?"good":fr.c==="disc"?"bad":"warn"}">${esc(fr.t)}</div>
+   <table style="margin-top:8px"><tr><th>relay</th><th>state</th><th>last frame</th></tr>
+   ${F.ak?`<tr><td>Ably push (SSE, subscribe-only key)</td><td>${esc(S.tx.ably)}</td><td>${S.rx.ably?ago(now-S.rx.ably)+" ago":"—"}</td></tr>`:""}
+   <tr><td>MQTT push (shiftr public)</td><td>${esc(S.tx.mqtt)}</td><td>${S.rx.mqtt?ago(now-S.rx.mqtt)+" ago":"—"}</td></tr>
+   <tr><td>ntfy snapshots (~6 min)</td><td>${esc(S.tx.ntfy)}</td><td>${S.rx.ntfy?ago(now-S.rx.ntfy)+" ago":"—"}</td></tr></table>
+   <div class="note">Box publish delay (state → relay): ${S.boxDelay!=null?S.boxDelay+" ms":"—"} · frames decrypted: ${S.frames}${S.err?` · <span class="bad">${esc(S.err)}</span>`:""}. LIVE = an encrypted push frame within 15 s; frames are sent every ~5 s (full every 60 s). Public relays have no SLA.</div></div>
+  <h2>Market feed</h2><div class="grid3">
+   <div class="card"><div class="k">feed</div><div class="v s ${fd.state==="OK"?"good":"warn"}">${esc(fd.state||"—")}</div></div>
+   <div class="card"><div class="k">lag</div><div class="v s">${fd.lag_ms??"—"} ms</div></div>
+   <div class="card"><div class="k">events/s</div><div class="v s">${fd.eps??"—"}</div></div></div>
+  <h2>Latency strip <small>launch→decision · decision→fill (modelled)</small></h2><div class="card">
+   ${lat.length?lat.map(x=>`<div class="hbar"><span>${esc(x.symbol)} <span class="dim">${x.launch_to_decision_s}s after launch</span></span><span class="mono">${x.decision_to_fill_ms} ms</span>
+   <div class="t"><b style="width:${x.decision_to_fill_ms/lmax*100}%;background:linear-gradient(90deg,var(--ac2),var(--ac))"></b></div></div>`).join(""):'<div class="empty">no fills yet</div>'}
+   <div class="note">Fill latency is the paper model’s assumed ${d.assume?.latency_ms} ms plus queueing, not a real on-chain confirmation.</div></div>
+  <h2>Ground-truth coverage</h2><div class="card">${c?`<div class="grid3"><div><div class="k">chain logs</div><div class="v s">${c.chain_pct}%</div></div><div><div class="k">pumpportal</div><div class="v s">${c.pp_pct}%</div></div><div><div class="k">union</div><div class="v s">${c.union_pct}%</div></div></div>
+   <div class="tmeta" style="margin-top:8px">${c.gt_eligible} eligible launches in a ${c.window_min} min window · backfill ${c.backfill_pct}% (lag ${c.backfill_lag_s}s) · run ${clock(c.gen)}</div>`:'<div class="empty">coverage arrives with the next full frame</div>'}</div>
+  <h2>Risk &amp; policy</h2><div class="card"><table>
+   <tr><td>decision policy</td><td>${esc(d.policy)} · ${esc(d.prefilter)}</td></tr><tr><td>decider</td><td>${d.is_ai?"GROK AI":"MOCK rule-based"}</td></tr>
+   <tr><td>trading status</td><td class="${d.status==="ACTIVE"?"good":"bad"}">${esc(d.status)}</td></tr>
+   <tr><td>daily-loss stop</td><td>${r.gate?"GATE (blocks entries)":"OFF · flag only"}</td></tr>
+   <tr><td>breach days / entries while breached</td><td>${r.breach_days} / ${r.entries_breached}</td></tr>
+   <tr><td>free cash / need per entry</td><td>${sol(r.free_cash)} / ${sol(r.need)}</td></tr>
+   <tr><td>ledger reconciliation</td><td class="${d.recon?.ok?"good":"bad"}">${d.recon?.ok?"OK":"MISMATCH"} · ${d.recon?.entries} entries</td></tr>
+   <tr><td>engine started</td><td>${clock(d.started)}</td></tr><tr><td>data generated</td><td>${clock(d.gen)} CST</td></tr></table>
+   <div class="note">Paper trading only: no wallets, no keys, no real transactions. Mayhem-mode tokens are hard-excluded. Times in America/Mexico_City.</div></div>`;
+}
+
+/* ---------------- desk (≥760 px): every panel at once, same data, same frames ---------------- */
+const DESK=window.matchMedia("(min-width:760px)");
+function mergedActivity(){
+  const seen=new Set(),out=[];
+  for(const a of [...(S.data?.activity||[]),...(S.full?.activity||[])]){const k=a.ts_ms+"|"+a.mint+"|"+a.stage+"|"+(a.action||"")+"|"+(a.side||"");if(!seen.has(k)){seen.add(k);out.push(a)}}
+  return out.sort((a,b)=>(b.ts_ms||0)-(a.ts_ms||0)).slice(0,40);
+}
+function setPanel(id,html){const el=document.getElementById(id);if(!el)return;const y=el.scrollTop;el.innerHTML=html;el.scrollTop=y}
+function hstrip(d,fr){
+  const now=Date.now(),fd=d?.feed||{},c=(S.full||d||{}).coverage;
+  const cell=(k,v,c2="")=>`<div class="hs"><div class="k">${k}</div><div class="v ${c2}">${v}</div></div>`;
+  return cell("link",esc(fr.t),fr.c==="live"?"good":fr.c==="disc"?"bad":fr.c==="snap"?"":"warn")+
+   (F.ak?cell("ably push",esc(S.tx.ably)+(S.rx.ably?" · "+ago(now-S.rx.ably):""),S.tx.ably==="connected"?"":"warn"):"")+
+   cell("mqtt push",esc(S.tx.mqtt)+(S.rx.mqtt?" · "+ago(now-S.rx.mqtt):""),S.tx.mqtt==="connected"||!F.mq?"":"warn")+
+   cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
+   cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
+   (d?cell("market feed",esc(fd.state||"—")+" · "+(fd.lag_ms??"—")+" ms",fd.state==="OK"?"good":"warn")+
+   cell("events/s",fd.eps??"—")+
+   cell("coverage",c?c.union_pct+"%":"—")+
+   cell("ledger",d.recon?.ok?"OK · "+d.recon.entries:"MISMATCH",d.recon?.ok?"good":"bad")+
+   cell("decider",d.is_ai?"GROK AI":"MOCK · rule-based",d.is_ai?"good":"warn")+
+   cell("policy",esc(d.policy||"—")+" · loss stop "+(d.risk?.gate?"ON":"OFF"))+
+   cell("status",esc(d.status||"—"),d.status==="ACTIVE"?"good":"bad"):"");
+}
+function renderDesk(fr){
+  const d=S.data; $("#hstrip").innerHTML=hstrip(d,fr);
+  if(!d){ setPanel("d-core",`<div class="gate" style="margin:8px 0">${KEY?`<b>Connecting to the encrypted relay…</b><div class="note">MQTT: ${esc(S.tx.mqtt)} · ntfy: ${esc(S.tx.ntfy)}</div>`:
+     `<b>No key in this link.</b><div class="note">Open the full cockpit link (with its #fragment). The fragment holds the decryption key and relay topics and is never sent to the host.</div>`}</div>`);
+     for(const id of ["d-scan","d-pos","d-feed","d-perf"]) setPanel(id,`<div class="empty">Waiting for the first encrypted frame. Nothing is shown until real data arrives.</div>`); return }
+  const e=d.engine||{},cs=e.cands||[],m=syms(Object.assign({},S.full||{},d)),acts=mergedActivity();
+  $("#h-core").textContent=(e.funnel?.window||"");
+  setPanel("d-core",brainHTML(d,fr,true));
+  $("#h-scan").textContent=(e.rates?.active_candidates??"—")+" tracked";
+  setPanel("d-scan",`<div class="card" style="padding:12px">${radar(e.funnel||{})}</div>
+   <h2>Candidates under evaluation</h2>${candHTML(cs)}
+   <h2>Why not promoted now <small>first failing check</small></h2><div class="card">${bars(e.notpromo,"var(--ac2)")}</div>
+   <h2>Why rejected <small>last 24 h · all policies</small></h2><div class="card">${bars(e.rej,"var(--bad)")}
+   <div class="note">“daily loss limit hit” rejections are from mock-v1/v2. mock-v3 has no loss stop; breaches are flags only.</div></div>`);
+  const agentN=(d.positions||[]).filter(p=>p.agent_tok>0).length;
+  $("#h-pos").textContent=agentN+" agent · "+(d.moonbags||[]).length+" moonbag";
+  setPanel("d-pos",posSummary(d)+posLists(d));
+  $("#h-feed").textContent=acts.length+" newest · executable values";
+  setPanel("d-feed",`<div class="feed">${acts.length?acts.map(a=>card(a,m)).join(""):`<div class="empty">No decisions yet. Idle means idle.</div>`}</div>`);
+  $("#h-perf").textContent=(d.policy||"")+" · paper";
+  setPanel("d-perf",tPerf(d));
+  if(S.drawer) setPanel("sheetIn",drawerHTML(S.drawer,d,fr));
+}
+function drawerHTML(t,d,fr){
+  const fn={history:tHistory,performance:tPerf,health:tHealth}[t];
+  return `<button class="xbtn" onclick="closeSheet()">CLOSE ✕</button><h2 style="margin-top:6px">${esc(t)}</h2>`+fn(d,fr);
+}
+window.closeSheet=()=>{S.drawer=null;$("#sheet").classList.remove("on")};
+window.__drawer=t=>{if(!S.data)return;S.drawer=t;$("#sheetIn").innerHTML=drawerHTML(t,S.data,freshness());$("#sheet").classList.add("on");$("#sheetIn").scrollTop=0};
+$("#dnav").onclick=e=>{const b=e.target.closest("button");if(b)__drawer(b.dataset.d)};
+/* ---------------- render ---------------- */
+function badge(fr){const fe=$("#fresh"); fe.className="pill fr "+fr.c; fe.lastElementChild.textContent=fr.t; fe.title=fr.why||"";
+  $("#lsub").textContent=fr.why||""; document.title=(fr.live?"● ":"○ ")+fr.t.split(" · ")[0]+" · DEGEN DESK"}
+function render(){
+  const fr=freshness(); badge(fr);
+  if(DESK.matches) return renderDesk(fr);
+  const d=S.data;
+  if(!d){ $("#t-"+S.tab).innerHTML=`<div class="gate">${KEY?`<b>Connecting to the encrypted relay…</b><div class="note">MQTT: ${esc(S.tx.mqtt)} · ntfy: ${esc(S.tx.ntfy)}</div>`:
+     `<b>No key in this link.</b><div class="note">Open the full cockpit link (with its #fragment). The fragment holds the decryption key and relay topics and is never sent to the host.</div>`}</div>`; return }
+  const fn={command:tCommand,positions:tPositions,scanner:tScanner,history:tHistory,performance:tPerf,health:tHealth}[S.tab];
+  const el=$("#t-"+S.tab), y=window.scrollY; el.innerHTML=fn(d,fr); window.scrollTo(0,y); S.seen=S.seenMax;
+}
+window.__tab=t=>{S.tab=t;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id==="t-"+t));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));window.scrollTo(0,0);render()};
+$("#nav").innerHTML=TABS.map(([k,l,ic])=>`<button data-t="${k}" class="${k==="command"?"on":""}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join("");
+$("#nav").onclick=e=>{const b=e.target.closest("button");if(b)__tab(b.dataset.t)};
+window.__pause=()=>{S.paused=true;try{S.es&&S.es.close()}catch(x){};S.tx.ntfy="closed";try{S.ws&&S.ws.close()}catch(x){};try{S.esA&&S.esA.close()}catch(x){};S.tx.ably=F.ak?"closed":"off"};
+window.__state=()=>({fresh:freshness(),tx:S.tx,frames:S.frames,hasFull:!!S.full,err:S.err,gen:S.data?.gen,layout:DESK.matches?(innerWidth>=1200?"desktop":"tablet"):"phone",src:S.src});
+DESK.addEventListener?.("change",()=>{ if(!DESK.matches&&S.drawer) closeSheet(); render() });
+(async()=>{
+  if(F.k){ try{KEY=await crypto.subtle.importKey("raw",b64u(F.k),"AES-GCM",false,["decrypt"])}catch(x){S.err="bad key"} }
+  render(); if(KEY){ mqtt(); ably(); ntfy(); }
+  setInterval(()=>{const fr=freshness(); badge(fr);
+    if(DESK.matches) $("#hstrip").innerHTML=hstrip(S.data,fr);
+    document.querySelectorAll(".brain").forEach(br=>{br.classList.toggle("frozen",!fr.live);br.dataset.freeze=fr.live?"":"FROZEN · "+fr.t})},1000);
+})();
+</script>
+</body>
+</html>
