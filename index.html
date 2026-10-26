@@ -262,7 +262,8 @@ async function onMsg(text,via,retained){
   if(o&&o.relay){ const t=o.relay.ably; if(t&&typeof t.t==="string"&&(!S.ablyTok||t.exp>S.ablyTok.exp)){ S.ablyTok=t; setTimeout(ablyStep,0) } delete o.relay; }
   // replay / reorder protection: never apply data older than what is already shown
   if(S.data && o.gen < S.data.gen) return;
-  const now=Date.now(); S.rx[via]=now; S.frames++;
+  const now=Date.now(); S.rx[via]=now; S.frames++; S.first=S.first||{}; if(S.first[via]==null) S.first[via]=Math.round(performance.now());
+  if(!retained&&via!=="ntfy"){ S.lat=S.lat||{}; (S.lat[via]=S.lat[via]||[]).push(now-e.t); if(S.lat[via].length>50) S.lat[via].shift() }
   if(via==="mqtt"||via==="ably"){ if(retained){S.retRx=now;S.retT=e.t} else S.liveRx=now; }
   S.src=via; S.lastT=e.t; S.lastRx=now;
   if(e.k==="full"||e.k==="snap"){ if(e.k==="full"||!S.full||o.gen>S.full.gen) S.full=o; S.data=Object.assign({},S.data||{},o);}
@@ -705,7 +706,7 @@ window.__tab=t=>{S.tab=t;document.querySelectorAll(".tab").forEach(x=>x.classLis
 $("#nav").innerHTML=TABS.map(([k,l,ic])=>`<button data-t="${k}" class="${k==="command"?"on":""}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join("");
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)__tab(b.dataset.t)};
 window.__pause=()=>{S.paused=true;try{S.es&&S.es.close()}catch(x){};S.tx.ntfy="closed";try{S.ws&&S.ws.close()}catch(x){};ablyClose();S.tx.ably=S.ablyTok?"closed":"off"};
-window.__state=()=>({fresh:freshness(),tx:S.tx,frames:S.frames,hasFull:!!S.full,err:S.err,gen:S.data?.gen,layout:DESK.matches?(innerWidth>=1200?"desktop":"tablet"):"phone",src:S.src});
+window.__state=()=>({fresh:freshness(),tx:S.tx,frames:S.frames,hasFull:!!S.full,err:S.err,gen:S.data?.gen,layout:DESK.matches?(innerWidth>=1200?"desktop":"tablet"):"phone",src:S.src,first:S.first||{},lat:S.lat||{},tokMin:S.ablyTok?Math.round((S.ablyTok.exp-Date.now())/60000):null});
 DESK.addEventListener?.("change",()=>{ if(!DESK.matches&&S.drawer) closeSheet(); render() });
 (async()=>{
   if(F.k){ try{KEY=await crypto.subtle.importKey("raw",b64u(F.k),"AES-GCM",false,["decrypt"])}catch(x){S.err="bad key"} }
