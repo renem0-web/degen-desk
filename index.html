@@ -260,7 +260,31 @@ function feedsHTML(d){const f=d.mfeeds||{},ks=["chain","pumpportal","quotes"].fi
    <td class="${x.up?"good":"bad"}">${x.up?"UP":"DOWN"}</td><td class="${(x.rc10||0)>20?"warn":""}">${x.rc10??"—"}${x.alldown10?` <span class="bad">(${x.alldown10} all-down)</span>`:""}</td>
    <td class="${x.age>30?"warn":""}">${x.age!=null?x.age+"s":"—"}</td><td>${x.cap!=null?x.cap+"%":"—"}</td></tr>`}).join("")}</table>
    <div class="note">Engine's market data, separate from this cockpit's own LIVE/SNAPSHOT link. Chain capture = live CreateEvents ÷ (live + backfill-recovered), 1 h. Quotes capture = successful requests ÷ all. ${f.pumpportal?.longest?`PumpPortal longest outage ${Math.round(f.pumpportal.longest)} s.`:""}</div>`}
-function fixHTML(d){const v=d.ver||{},r=d.since_fix;if(!v.engine_version)return"";
+const hm=s=>s==null?"—":Math.floor(s/3600)+"h"+String(Math.floor(s%3600/60)).padStart(2,"0")+"m";
+const pct=v=>v==null?"—":(v>0?"+":"")+v.toFixed(1)+"%";
+function statRow(lab,x){if(!x)return"";return `<tr><td>${lab}</td><td>${x.n??0}</td><td>${x.wr!=null?x.wr+"%":"—"} <span class="dim">${x.w??0}W/${x.l??0}L</span></td><td class="good">${x.aw!=null?ssol(x.aw):"—"} <span class="dim">${pct(x.awp)}</span></td><td class="bad">${x.al!=null?ssol(x.al):"—"} <span class="dim">${pct(x.alp)}</span></td><td class="${cls(x.real)}">${ssol(x.real)}</td></tr>`}
+function cpHTML(c,title){if(!c)return"";return `<div class="card" style="margin-top:8px"><div class="k">${title} <span class="chip c-tp">${esc(c.label||"")}</span> <span class="dim">${clock(c.ts)} CST</span></div>
+  <div class="grid3" style="margin-top:6px"><div><div class="k">net P&amp;L</div><div class="v s ${cls(c.net)}">${ssol(c.net)}</div></div><div><div class="k">equity est.</div><div class="v s">${sol(c.eq)}</div></div><div><div class="k">cash</div><div class="v s">${sol(c.cash)}</div></div></div>
+  <div class="tmeta">realized ${ssol(c.real)} · ${c.fresh?"all positions freshly priced":"<span class=warn>not all positions freshly priced</span>"}${(c.pos||[]).length?" · open: "+c.pos.map(x=>esc(x.sym||x.mint?.slice(0,6))+" "+sol(x.exec)+(x.val_ms?" @ "+clock(x.val_ms):"")+" "+esc(x.st||"")).join(", "):" · flat"}</div></div>`}
+function expHTML(d){const r=d.run;if(!r||r.kind!=="experiment")return"";const m=r.m||{};
+  const st={RUNNING:"good",WIND_DOWN:"warn",CLOSED:"mut"}[r.status]||"";
+  const rej=Object.entries(m.rej||{}).sort((a,b)=>b[1]-a[1]);
+  return `<div class="card" style="border-color:var(--ac2)"><div class="k">EXPERIMENT <span class="chip c-tp">${esc(r.id)}</span> <span class="v s ${st}" style="display:inline">${esc(r.status)}</span></div>
+  <div class="tmeta">paper only · 2 SOL simulated start · fixed 0.05 SOL entries · ${esc(r.ver||"")} · ${esc(r.policy||"")} · MOCK rule-based (no Grok) · started ${clock(r.start)} CST · ${r.status==="RUNNING"?"entries stop in "+hm(r.left_s)+" (T+24h "+clock(r.t24)+" CST)":r.stop?"entries stopped "+clock(r.stop.ts)+" CST ("+esc(r.stop.reason)+")":""}${r.status==="WIND_DOWN"&&r.wd_deadline?" · wind-down limit "+clock(r.wd_deadline)+" CST":""} · config ${esc((r.cfg||"").slice(0,12))}</div>
+  <div class="grid3" style="margin-top:8px"><div><div class="k">net P&amp;L after costs</div><div class="v s ${cls(m.net)}">${ssol(m.net)}</div></div><div><div class="k">equity est.</div><div class="v s">${sol(m.eq)}</div></div><div><div class="k">max drawdown</div><div class="v s bad">${m.dd_pct!=null?m.dd_pct.toFixed(1)+"%":"—"}</div></div>
+   <div><div class="k">realized</div><div class="v s ${cls(m.real)}">${ssol(m.real)}</div></div><div><div class="k">unrealized est.</div><div class="v s ${cls(m.unreal)}">${m.unreal==null?"n/a":ssol(m.unreal)}</div></div><div><div class="k">entries</div><div class="v s">${m.entries??0}</div></div></div>
+  <table style="margin-top:8px"><tr><th>closed</th><th>n</th><th>win rate</th><th>avg win</th><th>avg loss</th><th>realized</th></tr>${statRow("24 h window",m.win)}${r.stop?statRow("wind-down",m.wd):""}</table>
+  <div class="tmeta">fees ${sol(m.fees)} · network ${sol(m.netc)} · rejected entries ${m.rej_n??0}${rej.length?": "+rej.map(([k,v])=>esc(k)+" "+v).join(", "):""}${m.after_stop?" · skipped after stop "+m.after_stop:""}</div>
+  <div class="tmeta">stale-price episodes ${m.stale??0} · unable-to-price ${m.unable??0} · blocked decisions ${m.blocked??0} · fallback-quote exits ${m.fb_exits??0}</div>
+  ${cpHTML(r.cp,"HEADLINE result")}
+  ${r.end?`<div class="card" style="margin-top:8px"><div class="k">WIND-DOWN result <span class="dim">separate from the headline · closed ${clock(r.end.ts)} CST (${esc(r.end.how)})</span></div><div class="tmeta">realized during wind-down ${ssol(r.end.wd?.realized_pnl_lamports)} · equity change ${ssol(r.end.wd?.equity_change_lamports)}${r.end.unresolved?` · <span class="bad">${r.end.unresolved} UNRESOLVED</span>: `+(r.unresolved||[]).map(u=>esc(u.sym||"")+" last "+sol(u.val)+(u.val_ms?" @ "+clock(u.val_ms):"")).join(", "):""}</div></div>`:""}
+  <div class="note">Runs 24 h or until a terminal block (insufficient simulated funds with nothing open). No top-ups, resets or tuning. The legacy run is archived below and never mixed into these numbers.</div></div>`}
+function legacyHTML(d){const g=d.legacy;if(!g)return"";
+  return `<h2>Archive <small>legacy run · not part of the experiment</small></h2><div class="card" style="opacity:.85"><div class="k"><span class="chip c-rej">${esc(g.label||"Legacy—affected by bugs")}</span> <span class="dim">${esc(g.id||"")}${g.archived?" · archived "+clock(g.archived)+" CST":""}${g.frozen?" · frozen":""}</span></div>
+  <div class="grid3" style="margin-top:6px"><div><div class="k">cash</div><div class="v s">${sol(g.cash)}</div></div><div><div class="k">realized</div><div class="v s ${cls(g.real)}">${ssol(g.real)}</div></div><div><div class="k">equity est.</div><div class="v s">${sol(g.eq)}</div></div></div>
+  <div class="tmeta">start ${sol(g.start,2)} SOL · ${g.closed??0} closed trades · ${(g.pos||[]).map(p=>esc(p.sym||"")+(p.manual_only?" (manual-only moonbag, NOT MANAGED)":"")+" value "+sol(p.exec)+(p.val_ms?" @ "+clock(p.val_ms)+" CST":"")+" "+esc(p.st||"")).join(", ")||"no open positions"}</div>
+  <div class="note">Results before 11:14:41 CST are affected by known bugs (frozen migrated prices, re-entry timestamps, restart detachment). No new entries; valuations display-only.</div></div>`}
+function fixHTML(d){const v=d.ver||{},r=d.since_fix;if(!v.engine_version||d.run?.kind==="experiment")return"";
   return `<div class="card"><div class="k">results since engine fix <span class="chip c-tp">${esc(v.engine_version)}</span> <span class="dim">policy ${esc(v.policy||"")} · rules unchanged</span></div>
    ${r?`<div class="grid3" style="margin-top:8px"><div><div class="k">realized</div><div class="v s ${cls(r.real)}">${ssol(r.real)}</div></div><div><div class="k">equity Δ</div><div class="v s ${cls(r.eq_chg)}">${r.eq_chg==null?"pending":ssol(r.eq_chg)}</div></div><div><div class="k">fills b/s</div><div class="v s">${r.fills?.buy??0}/${r.fills?.sell??0}</div></div></div>
    <div class="tmeta">since ${clock(r.since)} CST · commit ${esc(r.commit||"")} · ${r.fb_fills||0} fills priced by fallback quotes${(r.exits||[]).length?" · exits: "+r.exits.map(x=>esc(x.sym||"")+" "+esc((x.kind||"").replace(/_/g," "))+" "+ssol(x.pnl)+" ("+esc(SRC[x.src]||x.src||"")+")").join(", "):""}</div>`:""}
@@ -501,12 +525,12 @@ function pipeHTML(fn){
 function tCommand(d,fr){
   const e=d.engine||{},fn=e.funnel||{},m=syms(d);
   const ent=(d.activity||[]).slice(0,10);
-  return `${brainHTML(d,fr,false)}
+  return `${expHTML(d)}${brainHTML(d,fr,false)}
   <h2>Market feeds <small>engine data, not the cockpit link</small></h2><div class="card" style="padding:8px 10px">${feedsHTML(d)}</div>
   <h2>Pipeline <small>${esc(fn.window||"")}</small></h2>
   <div class="card" style="padding:4px 6px">${pipeHTML(fn)}</div>
   <h2>Live decisions <small>newest first · executable values</small></h2>
-  <div class="feed">${ent.length?ent.map(a=>card(a,m)).join(""):`<div class="empty">No decisions yet. Idle means idle.</div>`}</div>`;
+  <div class="feed">${ent.length?ent.map(a=>card(a,m)).join(""):`<div class="empty">No decisions yet. Idle means idle.</div>`}</div>${legacyHTML(d)}`;
 }
 function posCard(p,isMoon){
   const mult=p.mult, c=mult==null?"mut":mult>=1?"good":"bad";
@@ -621,7 +645,7 @@ function tPerf(d){
   const closed=(f.trades||[]).filter(t=>t.closed).sort((a,b)=>a.closed-b.closed); let acc=0; const cum=closed.map(t=>[t.closed,(acc+=t.real)/L]);
   const pol=Object.entries(st);
   const at=d.recon?.attr, br=d.recon?.breach;
-  return `${fixHTML(d)}<div class="card" style="margin-top:10px"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
+  return `${expHTML(d)}${fixHTML(d)}<div class="card" style="margin-top:10px"><div class="k">equity estimate <span class="dim">(cash + estimated positions)</span>${(b.stale_pos||[]).length?' <span class="chip c-stale">STALE ESTIMATE</span>':""}</div>
    <div class="v ${(b.stale_pos||[]).length?"stalev":""}" style="font-size:30px;margin-top:6px">${sol(b.eq_est??b.eq_lb)} <span class="mut" style="font-size:14px">SOL</span></div>
    <div class="tmeta">start ${sol(b.start,2)} · cash ${sol(b.cash)} (exact) · positions are estimates, not a guaranteed floor${(b.stale_pos||[]).length?` · <span class="warn">stale: ${esc(b.stale_pos.join(", "))}</span>`:""}${(b.unpriced_pos||[]).length?` · <span class="bad">unpriced (counted as 0): ${esc(b.unpriced_pos.join(", "))}</span>`:""}</div>
    <div style="margin-top:10px">${snapOnly&&!eq.length?`<div class="empty" style="padding:16px">Equity history arrives with live full frames (every 60 s). Snapshots carry current numbers only.</div>`:spark(eq.map(p=>[p[0],p[1]/L]),{base:(b.start||0)/L,color:"#7cf7d4",fmt:v=>v.toFixed(3)})}</div></div>
@@ -641,7 +665,7 @@ function tPerf(d){
    <tr><td><b>headline</b></td><td></td><td></td><td class="${cls(at.headline)}"><b>${ssol(at.headline)}</b></td></tr></table>
    <div class="note">mock-v1 fills carry no policy tag; they are attributed from the ledger's policy-change annotations. Partial sales of a still-open position count toward the policy that opened it.</div>`:'<div class="empty">attribution arrives with the next reconciliation</div>'}
    ${br?`<div class="note">Daily loss limit −${sol(br.limit,2)} SOL (derived from the ledger): ${Object.entries(br.days||{}).map(([k,v])=>`first breached ${clock(v.ts)} CST on ${esc(k)} UTC (seq ${v.seq}, ${ssol(v.real)} SOL, ${esc(v.sym||"")}, ${esc(v.policy||"")})`).join("; ")||"not breached"}.${br.flag_start?` mock-v3 flag recording started ${clock(br.flag_start.ts)} CST (seq ${br.flag_start.seq}).`:""}</div>`:""}
-   <div class="note">Small samples. These are MOCK rule-based paper results with modelled latency (${d.assume?.latency_ms} ms) and slippage cap (${(d.assume?.slip_bps||0)/100}%); not evidence of a profitable strategy.</div></div>`;
+   <div class="note">Small samples. These are MOCK rule-based paper results with modelled latency (${d.assume?.latency_ms} ms) and slippage cap (${(d.assume?.slip_bps||0)/100}%); not evidence of a profitable strategy.</div></div>${legacyHTML(d)}`;
 }
 function tHealth(d,fr){
   const fd=d.feed||{},c=(S.full||d).coverage,e=d.engine||{},lat=e.lat||[],r=d.risk||{};
@@ -693,6 +717,7 @@ function hstrip(d,fr){
    cell("mqtt push",esc(S.tx.mqtt)+(S.rx.mqtt?" · "+ago(now-S.rx.mqtt):""),S.tx.mqtt==="connected"||!F.mq?"":"warn")+
    cell("ntfy snapshot",esc(S.tx.ntfy)+(S.rx.ntfy?" · "+ago(now-S.rx.ntfy):""))+
    cell("engine → relay",S.boxDelay!=null?S.boxDelay+" ms":"—",S.boxDelay>15000?"warn":"")+
+   (d?.run?.kind==="experiment"?cell("run",esc(d.run.id.replace("exp-2sol-",""))+" · "+esc(d.run.status)+(d.run.status==="RUNNING"?" · "+hm(d.run.left_s)+" left":""),d.run.status==="RUNNING"?"good":"warn"):"")+
    (d?cell("market feed",esc(fd.state||"—")+" · "+(fd.lag_ms??"—")+" ms",fd.state==="OK"?"good":"warn")+
    (d.mfeeds?.chain?cell("chain sockets",Object.values(d.mfeeds.chain.socks||{}).filter(v=>v.up).length+"/"+Object.keys(d.mfeeds.chain.socks||{}).length+" · "+(d.mfeeds.chain.rc10??"—")+" rc/10m",d.mfeeds.chain.up?"":"bad"):"")+
    (d.xp?.unable?.length?cell("exit pricing","UNABLE: "+esc(d.xp.unable.join(", ")),"bad"):d.ver?.engine_version?cell("engine",esc(d.ver.engine_version),"good"):"")+
